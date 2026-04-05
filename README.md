@@ -65,28 +65,28 @@ The result: An AI "Incident Response Team" that navigates servers, traces logs, 
 ## 🏗️ System Architecture
 
 ```text
-┌─────────────────────────────────────────────────────────────────┐
-│                    CLIENT BROWSER                               │
-│          React SPA (Tailwind + Framer Motion)                   │
-│          localhost:5173                                         │
-└───────────┬─────────────────────────────────┬───────────────────┘
-            │ HTTP (REST)                     │ ws://
-            ▼                                 ▼
-┌─────────────────────────────────────────────────────────────────┐
-│              FASTAPI BACKEND (localhost:7860)                   │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────────────┐    │
-│  │ /config  │ │/scenarios│ │  /reset  │ │  ws:// Simulator │    │
-│  │ Env Sync │ │ DB Cache │ │ Injection│ │  Live Stream Sync│    │
-│  └──────────┘ └──────────┘ └──────────┘ └──────────────────┘    │
-└───────────┬───────────────────────────────────┬─────────────────┘
-            │                                   │
-            ▼                                   ▼                            
-┌─────────────────────────────────────────────────────────────────┐
-│                  OLLAMA ENGINE / LLM PIPELINE                   │
-│  Agent A (Investigator)   ◄──────►   Agent B (Validator)        │
-│  - Generates Hypotheses              - Challenges Assertions    │
-│  - Runs System Tools                 - Requires Proof           │
-└─────────────────────────────────────────────────────────────────┘
+                  ┌─────────────────────────────────────────────────────────────────┐
+                  │                    CLIENT BROWSER                               │
+                  │          React SPA (Tailwind + Framer Motion)                   │
+                  │          localhost:5173                                         │
+                  └───────────┬─────────────────────────────────┬───────────────────┘
+                              │ HTTP (REST)                     │ ws://
+                              ▼                                 ▼
+                  ┌─────────────────────────────────────────────────────────────────┐
+                  │              FASTAPI BACKEND (localhost:7860)                   │
+                  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────────────┐    │
+                  │  │ /config  │ │/scenarios│ │  /reset  │ │  ws:// Simulator │    │
+                  │  │ Env Sync │ │ DB Cache │ │ Injection│ │  Live Stream Sync│    │
+                  │  └──────────┘ └──────────┘ └──────────┘ └──────────────────┘    │
+                  └───────────┬───────────────────────────────────┬─────────────────┘
+                              │                                   │
+                              ▼                                   ▼                            
+                  ┌─────────────────────────────────────────────────────────────────┐
+                  │                  OLLAMA ENGINE / LLM PIPELINE                   │
+                  │  Agent A (Investigator)   ◄──────►   Agent B (Validator)        │
+                  │  - Generates Hypotheses              - Challenges Assertions    │
+                  │  - Runs System Tools                 - Requires Proof           │
+                  └─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
