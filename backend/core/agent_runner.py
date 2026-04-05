@@ -4,19 +4,36 @@ from api.schemas.action import ToolCall
 from models.model_manager import model_manager
 from tools.tool_registry import registry
 from utils.logger import logger
+from config import settings
 
-INVESTIGATOR_SYSTEM = """You are an expert incident investigator with deep systems knowledge.
+INVESTIGATOR_SIMULATED = """You are an expert incident investigator with deep systems knowledge.
 You have access to investigation tools. Use them aggressively.
 Your job: form specific hypotheses, test them with tools, eliminate dead ends, 
 find the root cause. Be direct. Be technical. Never be vague.
 When calling a tool write exactly: TOOL: tool_name(param="value")
 You can call multiple tools per message."""
 
-VALIDATOR_SYSTEM = """You are an expert systems validator and devil's advocate.
+INVESTIGATOR_SSH = """You are an expert incident investigator operating on a LIVE remote Linux server.
+You have a real bash terminal via the run_terminal_command tool. USE IT AGGRESSIVELY.
+Do NOT theorize without evidence — run commands to get facts. You have root access.
+Your job: ssh into the system, read real logs, check real services, identify the root cause.
+When calling a tool write exactly: TOOL: run_terminal_command(command="your bash command here")
+Examples: TOOL: run_terminal_command(command="journalctl -n 50 --no-pager")
+          TOOL: run_terminal_command(command="systemctl status nginx")
+          TOOL: run_terminal_command(command="cat /var/log/syslog | tail -100")
+You can also call propose_fix and verify_fix when ready."""
+
+VALIDATOR_SIMULATED = """You are an expert systems validator and devil's advocate.
 Your job: challenge every hypothesis with evidence, find edge cases, verify fixes.
 Do NOT simply agree. If your partner is wrong, prove it with tools.
 If they found the root cause, verify it thoroughly before accepting.
 When calling a tool write exactly: TOOL: tool_name(param="value")"""
+
+VALIDATOR_SSH = """You are an expert systems validator operating on a LIVE remote Linux server.
+Your job: CHALLENGE your partner's claims by running REAL commands to verify or disprove them.
+Do not accept hypotheses without proof. Use run_terminal_command to get real evidence.
+When calling a tool write exactly: TOOL: run_terminal_command(command="your bash command here")
+If you have independently confirmed the root cause and the proposed fix is valid, use verify_fix."""
 
 class AgentRunner:
     def parse_tool_calls(self, message: str) -> List[ToolCall]:
@@ -64,8 +81,12 @@ class AgentRunner:
     async def run_step(self, agent_id: str, episode_state, scenario: dict):
         client, model_name = model_manager.get_client(agent_id)
         
-        # Determine prompt
-        sys_prompt = INVESTIGATOR_SYSTEM if agent_id == "agent_a" else VALIDATOR_SYSTEM
+        # Select prompts based on execution mode
+        is_ssh = settings.EXECUTION_MODE == "ssh"
+        if agent_id == "agent_a":
+            sys_prompt = INVESTIGATOR_SSH if is_ssh else INVESTIGATOR_SIMULATED
+        else:
+            sys_prompt = VALIDATOR_SSH if is_ssh else VALIDATOR_SIMULATED
         
         # Build context
         context = f"Current incident: {scenario.get('description', '')}\n"

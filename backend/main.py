@@ -33,9 +33,22 @@ app.include_router(model_routes.router)
 async def health():
     return {"status": "ok", "env": "nexus-incident-investigation"}
 
-@app.get("/")
+@app.get("/api")
 async def root():
     return {"name": "NEXUS", "version": "1.0.0", "status": "running"}
+
+# Serve frontend statically if available
+frontend_dist = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "dist")
+if os.path.exists(frontend_dist):
+    from fastapi.staticfiles import StaticFiles
+    from fastapi.responses import FileResponse
+    
+    app.mount("/assets", StaticFiles(directory=os.path.join(frontend_dist, "assets")), name="assets")
+    
+    @app.get("/")
+    @app.get("/{catchall:path}")
+    async def serve_frontend(catchall: str = ""):
+        return FileResponse(os.path.join(frontend_dist, "index.html"))
 
 async def check_ollama():
     try:

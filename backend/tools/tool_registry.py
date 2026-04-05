@@ -8,6 +8,7 @@ from .tools.service_status import tool_check_service_status
 from .tools.run_diagnostic import tool_run_diagnostic
 from .tools.fix_proposer import tool_propose_fix
 from .tools.fix_verifier import tool_verify_fix
+from .tools.run_terminal import tool_run_terminal_command
 
 class ToolRegistry:
     def __init__(self):
@@ -22,6 +23,7 @@ class ToolRegistry:
         self.register_tool("run_diagnostic", tool_run_diagnostic)
         self.register_tool("propose_fix", tool_propose_fix)
         self.register_tool("verify_fix", tool_verify_fix)
+        self.register_tool("run_terminal_command", tool_run_terminal_command)
 
     def register_tool(self, name: str, func: Callable):
         self.tools[name] = func

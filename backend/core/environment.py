@@ -12,6 +12,9 @@ from api.schemas.action import NexusAction
 from api.schemas.observation import NexusObservation, ToolResult
 from config import settings
 
+SIMULATED_TOOLS = ["read_logs", "check_config", "query_database", "check_service_status", "run_diagnostic", "propose_fix", "verify_fix"]
+SSH_TOOLS = ["run_terminal_command", "propose_fix", "verify_fix"]
+
 class NexusEnvironment:
     def __init__(self):
         self.runner = AgentRunner()
@@ -56,13 +59,14 @@ class NexusEnvironment:
             max_rounds=settings.MAX_STEPS
         )
         
+        available_tools = SSH_TOOLS if settings.EXECUTION_MODE == "ssh" else SIMULATED_TOOLS
         obs = NexusObservation(
             partner_message="",
             tool_results=[],
             system_state={},
             investigation_stage="investigating",
             round=1,
-            available_tools=["read_logs", "check_config", "query_database", "check_service_status", "run_diagnostic", "propose_fix", "verify_fix"],
+            available_tools=available_tools,
             clues_found=[],
             scenario_description=scenario["description"],
             scenario_context=scenario["context"]
@@ -115,7 +119,7 @@ class NexusEnvironment:
             system_state={"total_tools_run": len(ep.tool_calls_made)},
             investigation_stage=ep.investigation_stage,
             round=ep.current_round,
-            available_tools=["read_logs", "check_config", "query_database", "check_service_status", "run_diagnostic", "propose_fix", "verify_fix"],
+            available_tools=SSH_TOOLS if settings.EXECUTION_MODE == "ssh" else SIMULATED_TOOLS,
             clues_found=ep.clues_found,
             scenario_description=sc["description"],
             scenario_context=sc["context"]

@@ -13,6 +13,11 @@ class ConfigUpdate(BaseModel):
     AGENT_B_PROVIDER: str
     AGENT_A_TEMPERATURE: float
     AGENT_B_TEMPERATURE: float
+    EXECUTION_MODE: str = "simulated"
+    SSH_HOST: str = ""
+    SSH_PORT: int = 22
+    SSH_USER: str = ""
+    SSH_PASSWORD: str = ""
 
 @router.get("/config")
 def get_config():
@@ -30,6 +35,13 @@ def get_config():
             "max_steps": settings.MAX_STEPS,
             "max_time": settings.MAX_EPISODE_TIME_SECONDS
         },
+        "execution": {
+            "mode": settings.EXECUTION_MODE,
+            "ssh_host": settings.SSH_HOST,
+            "ssh_port": settings.SSH_PORT,
+            "ssh_user": settings.SSH_USER,
+            "ssh_password": settings.SSH_PASSWORD
+        },
         "hardware": hw
     }
 
@@ -42,6 +54,11 @@ def update_config(req: ConfigUpdate):
     settings.AGENT_B_PROVIDER = req.AGENT_B_PROVIDER
     settings.AGENT_A_TEMPERATURE = req.AGENT_A_TEMPERATURE
     settings.AGENT_B_TEMPERATURE = req.AGENT_B_TEMPERATURE
+    settings.EXECUTION_MODE = req.EXECUTION_MODE
+    settings.SSH_HOST = req.SSH_HOST
+    settings.SSH_PORT = req.SSH_PORT
+    settings.SSH_USER = req.SSH_USER
+    settings.SSH_PASSWORD = req.SSH_PASSWORD
     
     # Persist to default.env
     from models.model_manager import model_manager
@@ -52,7 +69,12 @@ def update_config(req: ConfigUpdate):
         "AGENT_A_PROVIDER": req.AGENT_A_PROVIDER,
         "AGENT_B_PROVIDER": req.AGENT_B_PROVIDER,
         "AGENT_A_TEMPERATURE": req.AGENT_A_TEMPERATURE,
-        "AGENT_B_TEMPERATURE": req.AGENT_B_TEMPERATURE
+        "AGENT_B_TEMPERATURE": req.AGENT_B_TEMPERATURE,
+        "EXECUTION_MODE": req.EXECUTION_MODE,
+        "SSH_HOST": req.SSH_HOST,
+        "SSH_PORT": req.SSH_PORT,
+        "SSH_USER": req.SSH_USER,
+        "SSH_PASSWORD": req.SSH_PASSWORD
     })
     
     return {"status": "success", "message": "Config updated for next episode"}
@@ -62,3 +84,14 @@ def pause():
     from core.episode_manager import episode_manager
     episode_manager.is_paused = not episode_manager.is_paused
     return {"paused": episode_manager.is_paused}
+
+@router.post("/config/ssh-test")
+def test_ssh_connection():
+    """Test the currently configured SSH credentials without saving."""
+    from utils.ssh_client import execute_ssh_command
+    result = execute_ssh_command("echo nexus_ping_ok")
+    success = result["exit_code"] == 0 and "nexus_ping_ok" in result["stdout"]
+    return {
+        "success": success,
+        "error": result["stderr"] if not success else None
+    }

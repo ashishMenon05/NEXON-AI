@@ -80,6 +80,9 @@ const SettingsView = () => {
     const [maxSteps, setMaxSteps] = useState(12);
     const [complexity, setComplexity] = useState('LEVEL_02: ADVERSARIAL');
     const [saved, setSaved] = useState(false);
+    const [executionMode, setExecutionMode] = useState('simulated');
+    const [sshConfig, setSshConfig] = useState({ host: '', port: 22, user: '', password: '' });
+    const [sshTestStatus, setSshTestStatus] = useState(null); // null | 'testing' | 'ok' | 'fail'
 
     useEffect(() => {
         const fetchConfig = async () => {
@@ -99,6 +102,15 @@ const SettingsView = () => {
                     temp: data.models.agent_b_temp
                 });
                 setMaxSteps(data.episode.max_steps);
+                if (data.execution) {
+                    setExecutionMode(data.execution.mode || 'simulated');
+                    setSshConfig({
+                        host: data.execution.ssh_host || '',
+                        port: data.execution.ssh_port || 22,
+                        user: data.execution.ssh_user || '',
+                        password: data.execution.ssh_password || ''
+                    });
+                }
             } catch (e) {
                 console.error("Failed to fetch initial config", e);
             }
@@ -118,7 +130,12 @@ const SettingsView = () => {
                     AGENT_A_PROVIDER: agentA.provider,
                     AGENT_B_PROVIDER: agentB.provider,
                     AGENT_A_TEMPERATURE: agentA.temp,
-                    AGENT_B_TEMPERATURE: agentB.temp
+                    AGENT_B_TEMPERATURE: agentB.temp,
+                    EXECUTION_MODE: executionMode,
+                    SSH_HOST: sshConfig.host,
+                    SSH_PORT: sshConfig.port,
+                    SSH_USER: sshConfig.user,
+                    SSH_PASSWORD: sshConfig.password
                 })
             });
             setSaved(true);
@@ -141,10 +158,15 @@ const SettingsView = () => {
                 AGENT_A_PROVIDER: agentA.provider,
                 AGENT_B_PROVIDER: agentB.provider,
                 AGENT_A_TEMPERATURE: agentA.temp,
-                AGENT_B_TEMPERATURE: agentB.temp
+                AGENT_B_TEMPERATURE: agentB.temp,
+                EXECUTION_MODE: executionMode,
+                SSH_HOST: sshConfig.host,
+                SSH_PORT: sshConfig.port,
+                SSH_USER: sshConfig.user,
+                SSH_PASSWORD: sshConfig.password
             })
         }).catch(e => { });
-    }, [agentA, agentB, maxSteps]);
+    }, [agentA, agentB, maxSteps, executionMode, sshConfig]);
 
     const ProviderToggle = ({ agent, agentId, onSetAgent }) => (
         <div className="flex gap-2 p-1 bg-surface-container-highest rounded-lg border border-white/5">
@@ -276,6 +298,89 @@ const SettingsView = () => {
                             />
                         </div>
                     </div>
+                </div>
+
+                {/* Execution Environment */}
+                <div className="md:col-span-12 glass-panel rounded-xl p-8 refractive-edge">
+                    <div className="flex items-center gap-4 mb-6">
+                        <div className="w-10 h-10 rounded-lg bg-tertiary/10 flex items-center justify-center border border-tertiary/20">
+                            <span className="material-symbols-outlined text-tertiary">lan</span>
+                        </div>
+                        <div>
+                            <h3 className="font-headline text-xl font-bold uppercase tracking-tight">Execution Environment</h3>
+                            <p className="font-mono text-[10px] text-slate-500 uppercase">Agent Tool Execution Mode</p>
+                        </div>
+                    </div>
+                    {/* Mode Toggle */}
+                    <div className="flex gap-2 p-1 bg-surface-container-highest rounded-lg border border-white/5 mb-6 max-w-sm">
+                        {[{ id: 'simulated', label: 'Simulated', icon: 'psychology' }, { id: 'ssh', label: 'SSH Lab Node', icon: 'terminal' }].map(m => (
+                            <button
+                                key={m.id}
+                                id={`exec-mode-${m.id}`}
+                                onClick={() => setExecutionMode(m.id)}
+                                className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded text-[11px] font-mono font-bold uppercase transition-all ${executionMode === m.id ? 'bg-tertiary text-black' : 'text-outline-variant hover:text-white'
+                                    }`}
+                            >
+                                <span className="material-symbols-outlined text-sm">{m.icon}</span>
+                                {m.label}
+                            </button>
+                        ))}
+                    </div>
+
+                    {executionMode === 'simulated' && (
+                        <p className="font-mono text-xs text-slate-500">
+                            Agents use pre-scripted scenario data (clue maps). No real system is touched.
+                        </p>
+                    )}
+
+                    {executionMode === 'ssh' && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-1">
+                                <label className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">Host / IP</label>
+                                <input id="ssh-host" type="text" placeholder="192.168.1.100"
+                                    className="w-full bg-transparent border-0 border-b border-tertiary/30 py-2 font-mono text-sm text-on-surface focus:outline-none focus:border-tertiary transition-all placeholder:text-slate-700"
+                                    value={sshConfig.host} onChange={e => setSshConfig(s => ({ ...s, host: e.target.value }))} />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">Port</label>
+                                <input id="ssh-port" type="number" placeholder="22"
+                                    className="w-full bg-transparent border-0 border-b border-tertiary/30 py-2 font-mono text-sm text-on-surface focus:outline-none focus:border-tertiary transition-all placeholder:text-slate-700"
+                                    value={sshConfig.port} onChange={e => setSshConfig(s => ({ ...s, port: parseInt(e.target.value) || 22 }))} />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">Username</label>
+                                <input id="ssh-user" type="text" placeholder="sandbox"
+                                    className="w-full bg-transparent border-0 border-b border-tertiary/30 py-2 font-mono text-sm text-on-surface focus:outline-none focus:border-tertiary transition-all placeholder:text-slate-700"
+                                    value={sshConfig.user} onChange={e => setSshConfig(s => ({ ...s, user: e.target.value }))} />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">Password</label>
+                                <input id="ssh-password" type="password" placeholder="••••••••"
+                                    className="w-full bg-transparent border-0 border-b border-tertiary/30 py-2 font-mono text-sm text-on-surface focus:outline-none focus:border-tertiary transition-all placeholder:text-slate-700"
+                                    value={sshConfig.password} onChange={e => setSshConfig(s => ({ ...s, password: e.target.value }))} />
+                            </div>
+                            <div className="md:col-span-2 flex items-center gap-4 pt-2">
+                                <button
+                                    id="ssh-test-btn"
+                                    onClick={async () => {
+                                        setSshTestStatus('testing');
+                                        try {
+                                            const res = await fetch('http://localhost:7860/config/ssh-test', { method: 'POST' });
+                                            const data = await res.json();
+                                            setSshTestStatus(data.success ? 'ok' : 'fail');
+                                        } catch { setSshTestStatus('fail'); }
+                                        setTimeout(() => setSshTestStatus(null), 4000);
+                                    }}
+                                    className="flex items-center gap-2 px-6 py-2 border border-tertiary/40 rounded text-tertiary font-mono text-xs uppercase hover:bg-tertiary/10 transition-all"
+                                >
+                                    <span className="material-symbols-outlined text-sm">{sshTestStatus === 'testing' ? 'sync' : 'cable'}</span>
+                                    {sshTestStatus === 'testing' ? 'Testing...' : 'Test Connection'}
+                                </button>
+                                {sshTestStatus === 'ok' && <span className="font-mono text-xs text-success">✓ Connected successfully</span>}
+                                {sshTestStatus === 'fail' && <span className="font-mono text-xs text-error">✗ Connection failed — check credentials</span>}
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Environmental Parameters */}

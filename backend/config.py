@@ -21,6 +21,12 @@ class Settings:
     AGENT_B_TEMPERATURE = float(os.getenv("AGENT_B_TEMPERATURE", "0.6"))
     AGENT_A_MAX_TOKENS = int(os.getenv("AGENT_A_MAX_TOKENS", "300"))
     AGENT_B_MAX_TOKENS = int(os.getenv("AGENT_B_MAX_TOKENS", "300"))
+    # EXECUTION ENVIRONMENT
+    EXECUTION_MODE = os.getenv("EXECUTION_MODE", "simulated")
+    SSH_HOST = os.getenv("SSH_HOST", "")
+    SSH_PORT = int(os.getenv("SSH_PORT", "22"))
+    SSH_USER = os.getenv("SSH_USER", "")
+    SSH_PASSWORD = os.getenv("SSH_PASSWORD", "")
 
     # HUGGINGFACE
     HF_TOKEN = os.getenv("HF_TOKEN")
