@@ -15,22 +15,7 @@ const TopNavBar = () => {
             </div>
 
             <div className="flex items-center gap-6">
-                <div className="flex items-center gap-4 bg-surface-container-lowest px-4 py-2 rounded-lg border border-white/5">
-                    <div className="flex flex-col items-center">
-                        <span className="text-[9px] font-mono text-outline-variant uppercase">Episode</span>
-                        <span className="text-sm font-mono font-bold">{sessionData?.episode || '—'}</span>
-                    </div>
-                    <div className="w-px h-6 bg-outline-variant/20"></div>
-                    <div className="flex flex-col items-center">
-                        <span className="text-[9px] font-mono text-outline-variant uppercase">Step</span>
-                        <span className="text-sm font-mono font-bold">{sessionData?.step || '—'}</span>
-                    </div>
-                    <div className="w-px h-6 bg-outline-variant/20"></div>
-                    <div className="flex flex-col items-center">
-                        <span className="text-[9px] font-mono text-outline-variant uppercase">Reward</span>
-                        <span className="text-sm font-mono font-bold text-tertiary">{sessionData?.reward || '—'}</span>
-                    </div>
-                </div>
+
 
                 <div className="flex gap-2">
                     <button

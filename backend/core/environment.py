@@ -12,8 +12,8 @@ from api.schemas.action import NexusAction
 from api.schemas.observation import NexusObservation, ToolResult
 from config import settings
 
-SIMULATED_TOOLS = ["read_logs", "check_config", "query_database", "check_service_status", "run_diagnostic", "propose_fix", "verify_fix"]
-SSH_TOOLS = ["run_terminal_command", "propose_fix", "verify_fix"]
+SIMULATED_TOOLS = ["read_logs", "check_config", "query_database", "check_service_status", "run_diagnostic", "update_config", "restart_service", "propose_fix", "submit_resolution"]
+SSH_TOOLS = ["run_terminal_command", "propose_fix", "submit_resolution"]
 
 class NexusEnvironment:
     def __init__(self):
@@ -27,7 +27,7 @@ class NexusEnvironment:
             "hard": HardGrader()
         }
 
-    async def reset(self, task: str = "software-incident", scenario_id: str = None, custom_scenario: dict = None, seed: int = None) -> NexusObservation:
+    async def reset(self, task: str = "software-incident", scenario_id: str = None, custom_scenario: dict = None, seed: int = None, max_steps: int = None) -> NexusObservation:
         # Determine difficulty from task
         difficulty = "easy"
         if task == "business-process-failure":
@@ -58,7 +58,8 @@ class NexusEnvironment:
             scenario_id=scenario["id"],
             task=task,
             difficulty=difficulty,
-            max_rounds=settings.MAX_STEPS
+            max_rounds=max_steps if max_steps is not None else settings.MAX_STEPS,
+            scenario_data=scenario
         )
         
         available_tools = SSH_TOOLS if settings.EXECUTION_MODE == "ssh" else SIMULATED_TOOLS
@@ -98,9 +99,17 @@ class NexusEnvironment:
         # 3. Compute semantic reward dynamically
         reward, breakdown = compute_reward(action.message, action.tool_calls, tool_results_data, ep, sc)
         
-        # Only stop when fix is verified by both agents — no arbitrary step limit
-        if ep.fix_verified:
+        # Stop when resolution submitted or max steps taken
+        if ep.fix_verified or ep.steps_taken >= ep.max_rounds:
             ep.done = True
+            
+            # If they maxed out without resolving, inject a synthetic report so the UI doesn't look broken
+            if not ep.fix_verified:
+                ep.add_tool_call("submit_resolution", {
+                    "root_cause_service": "UNRESOLVED",
+                    "root_cause_description": "Investigation terminated: Maximum round limit reached without agent consensus.",
+                    "fix_applied": "No fix was submitted."
+                })
             
             # Final scoring overrides semantic cumulative reward in openenv inference if grader is used
             # We compute it here for info

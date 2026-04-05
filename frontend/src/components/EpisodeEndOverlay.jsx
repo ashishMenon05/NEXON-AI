@@ -129,9 +129,9 @@ const EpisodeEndOverlay = ({ isOpen, onClose, metrics, gameState }) => {
                     </button>
                 </div>
 
-                <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-12">
-                    {/* Left Column: Primary Metrics */}
-                    <div className="space-y-10">
+                <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {/* Primary Metrics */}
+                    <div className="space-y-6">
                         <div className="space-y-2">
                             <span className="font-mono text-[10px] text-outline tracking-widest uppercase">Cumulative Efficiency Score</span>
                             <div className="flex items-baseline gap-2">
@@ -143,12 +143,12 @@ const EpisodeEndOverlay = ({ isOpen, onClose, metrics, gameState }) => {
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="bg-surface-container-lowest/50 p-4 border-l border-primary/20 refractive-edge">
-                                <span className="font-mono text-[9px] text-outline uppercase block mb-1">Total Runtime</span>
-                                <span className="font-headline text-2xl font-medium">{metrics?.runtime || '—'}</span>
+                                <span className="font-mono text-[9px] text-outline uppercase block mb-1">Clues Found</span>
+                                <span className="font-headline text-2xl font-medium">{gameState?.clues_found?.length || 0}</span>
                             </div>
                             <div className="bg-surface-container-lowest/50 p-4 border-l border-primary/20 refractive-edge">
                                 <span className="font-mono text-[9px] text-outline uppercase block mb-1">Steps Executed</span>
-                                <span className="font-headline text-2xl font-medium">{metrics?.steps || '—'}</span>
+                                <span className="font-headline text-2xl font-medium">{gameState?.current_round || metrics?.steps || '—'}</span>
                             </div>
                         </div>
                         <div className="flex items-center gap-4 p-5 bg-tertiary/5 border border-tertiary/10 rounded-lg">
@@ -156,8 +156,8 @@ const EpisodeEndOverlay = ({ isOpen, onClose, metrics, gameState }) => {
                                 <span className="material-symbols-outlined">troubleshoot</span>
                             </div>
                             <div>
-                                <span className="font-mono text-[10px] text-tertiary/60 uppercase block">Terminal Analysis</span>
-                                <span className="text-sm font-medium tracking-wide">Root Cause Found: <span className="font-mono text-tertiary">{metrics?.rootCause || '—'}</span></span>
+                                <span className="font-mono text-[10px] text-tertiary/60 uppercase block">State Validation</span>
+                                <span className="text-sm font-medium tracking-wide">Status: <span className="font-mono text-tertiary">{metrics?.rootCause || '—'}</span></span>
                             </div>
                         </div>
                     </div>
@@ -173,20 +173,28 @@ const EpisodeEndOverlay = ({ isOpen, onClose, metrics, gameState }) => {
                                     <span className="font-headline font-bold text-primary tracking-tighter uppercase">Agent_Alpha</span>
                                     <span className="font-mono text-[10px] text-primary/50">CYAN_PROTOCOL</span>
                                 </div>
-                                <div className="grid grid-cols-3 gap-2 text-center">
-                                    <div>
-                                        <span className="font-mono text-[9px] text-outline block uppercase">ACCURACY</span>
-                                        <span className="font-headline text-lg font-medium text-primary">{metrics?.agentA?.accuracy || '—'}</span>
-                                    </div>
-                                    <div className="border-x border-white/5">
-                                        <span className="font-mono text-[9px] text-outline block uppercase">LATENCY</span>
-                                        <span className="font-headline text-lg font-medium text-primary">{metrics?.agentA?.latency || '—'}</span>
-                                    </div>
-                                    <div>
-                                        <span className="font-mono text-[9px] text-outline block uppercase">IOPS</span>
-                                        <span className="font-headline text-lg font-medium text-primary">{metrics?.agentA?.iops || '—'}</span>
-                                    </div>
-                                </div>
+                                {(() => {
+                                    const msgs = gameState?.agents?.agent_a?.messages || [];
+                                    const msgCount = msgs.filter(m => m.type === 'message').length;
+                                    const toolCount = msgs.filter(m => m.type === 'tool_call').length;
+                                    const errCount = msgs.filter(m => m.type === 'tool_result' && m.result?.toLowerCase().includes('error')).length;
+                                    return (
+                                        <div className="grid grid-cols-3 gap-2 text-center">
+                                            <div>
+                                                <span className="font-mono text-[9px] text-outline flex flex-col items-center justify-center gap-1 uppercase"><span className="material-symbols-outlined text-[12px]">chat</span> MSGS</span>
+                                                <span className="font-headline text-lg font-medium text-primary">{msgCount}</span>
+                                            </div>
+                                            <div className="border-x border-white/5">
+                                                <span className="font-mono text-[9px] text-outline flex flex-col items-center justify-center gap-1 uppercase"><span className="material-symbols-outlined text-[12px]">build</span> TOOLS</span>
+                                                <span className="font-headline text-lg font-medium text-primary">{toolCount}</span>
+                                            </div>
+                                            <div>
+                                                <span className="font-mono text-[9px] text-outline flex flex-col items-center justify-center gap-1 uppercase"><span className="material-symbols-outlined text-[12px]">warning</span> ERRS</span>
+                                                <span className="font-headline text-lg font-medium text-primary">{errCount}</span>
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
                             </div>
                         </div>
                         {/* Agent B */}
@@ -197,24 +205,63 @@ const EpisodeEndOverlay = ({ isOpen, onClose, metrics, gameState }) => {
                                     <span className="font-headline font-bold text-secondary tracking-tighter uppercase">Agent_Bravo</span>
                                     <span className="font-mono text-[10px] text-secondary/50">VIOLET_PROTOCOL</span>
                                 </div>
-                                <div className="grid grid-cols-3 gap-2 text-center">
-                                    <div>
-                                        <span className="font-mono text-[9px] text-outline block uppercase">ACCURACY</span>
-                                        <span className="font-headline text-lg font-medium text-secondary">{metrics?.agentB?.accuracy || '—'}</span>
-                                    </div>
-                                    <div className="border-x border-white/5">
-                                        <span className="font-mono text-[9px] text-outline block uppercase">LATENCY</span>
-                                        <span className="font-headline text-lg font-medium text-secondary">{metrics?.agentB?.latency || '—'}</span>
-                                    </div>
-                                    <div>
-                                        <span className="font-mono text-[9px] text-outline block uppercase">IOPS</span>
-                                        <span className="font-headline text-lg font-medium text-secondary">{metrics?.agentB?.iops || '—'}</span>
-                                    </div>
-                                </div>
+                                {(() => {
+                                    const msgs = gameState?.agents?.agent_b?.messages || [];
+                                    const msgCount = msgs.filter(m => m.type === 'message').length;
+                                    const toolCount = msgs.filter(m => m.type === 'tool_call').length;
+                                    const errCount = msgs.filter(m => m.type === 'tool_result' && m.result?.toLowerCase().includes('error')).length;
+                                    return (
+                                        <div className="grid grid-cols-3 gap-2 text-center">
+                                            <div>
+                                                <span className="font-mono text-[9px] text-outline flex flex-col items-center justify-center gap-1 uppercase"><span className="material-symbols-outlined text-[12px]">chat</span> MSGS</span>
+                                                <span className="font-headline text-lg font-medium text-secondary">{msgCount}</span>
+                                            </div>
+                                            <div className="border-x border-white/5">
+                                                <span className="font-mono text-[9px] text-outline flex flex-col items-center justify-center gap-1 uppercase"><span className="material-symbols-outlined text-[12px]">build</span> TOOLS</span>
+                                                <span className="font-headline text-lg font-medium text-secondary">{toolCount}</span>
+                                            </div>
+                                            <div>
+                                                <span className="font-mono text-[9px] text-outline flex flex-col items-center justify-center gap-1 uppercase"><span className="material-symbols-outlined text-[12px]">warning</span> ERRS</span>
+                                                <span className="font-headline text-lg font-medium text-secondary">{errCount}</span>
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
                             </div>
                         </div>
                     </div>
                 </div>
+
+                {/* Submit Resolution Report Panel */}
+                {(() => {
+                    const resCall = gameState?.tool_calls_made?.find(c => c.tool_name === 'submit_resolution');
+                    if (!resCall) return null;
+                    const p = resCall.params || {};
+                    return (
+                        <div className="px-8 pb-8">
+                            <div className="p-6 bg-surface-container-low/40 border border-primary/20 rounded-lg">
+                                <h3 className="font-headline font-bold text-primary tracking-widest uppercase mb-4 flex items-center gap-2">
+                                    <span className="material-symbols-outlined">description</span>
+                                    Incident Resolution Report
+                                </h3>
+                                <div className="space-y-4">
+                                    <div>
+                                        <span className="font-mono text-[10px] text-outline uppercase block mb-1">Root Cause Service</span>
+                                        <span className="font-mono text-sm text-on-surface bg-surface-container p-1 px-2 rounded border border-white/5">{p.root_cause_service || 'UNKNOWN'}</span>
+                                    </div>
+                                    <div>
+                                        <span className="font-mono text-[10px] text-outline uppercase block mb-1">Root Cause Description</span>
+                                        <p className="text-sm text-on-surface/80">{p.root_cause_description || 'No description provided.'}</p>
+                                    </div>
+                                    <div className="p-4 bg-tertiary/5 border-l-2 border-tertiary rounded-r">
+                                        <span className="font-mono text-[10px] text-tertiary uppercase block mb-1">Fix Applied</span>
+                                        <p className="text-sm text-on-surface">{p.fix_applied || 'No fix described.'}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })()}
 
                 {/* Modal Footer */}
                 <div className="p-6 bg-surface-container-lowest/90 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4">

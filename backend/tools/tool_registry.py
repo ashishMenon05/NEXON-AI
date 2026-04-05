@@ -7,8 +7,10 @@ from .tools.database_query import tool_query_database
 from .tools.service_status import tool_check_service_status
 from .tools.run_diagnostic import tool_run_diagnostic
 from .tools.fix_proposer import tool_propose_fix
-from .tools.fix_verifier import tool_verify_fix
+from .tools.submit_resolution import tool_submit_resolution
 from .tools.run_terminal import tool_run_terminal_command
+from .tools.update_config import tool_update_config
+from .tools.restart_service import tool_restart_service
 
 class ToolRegistry:
     def __init__(self):
@@ -22,8 +24,10 @@ class ToolRegistry:
         self.register_tool("check_service_status", tool_check_service_status)
         self.register_tool("run_diagnostic", tool_run_diagnostic)
         self.register_tool("propose_fix", tool_propose_fix)
-        self.register_tool("verify_fix", tool_verify_fix)
+        self.register_tool("submit_resolution", tool_submit_resolution)
         self.register_tool("run_terminal_command", tool_run_terminal_command)
+        self.register_tool("update_config", tool_update_config)
+        self.register_tool("restart_service", tool_restart_service)
 
     def register_tool(self, name: str, func: Callable):
         self.tools[name] = func
@@ -34,8 +38,8 @@ class ToolRegistry:
             
         func = self.tools[name]
         try:
-            # propose_fix and verify_fix need episode_state
-            if name in ["propose_fix", "verify_fix"]:
+            # Mutable state tools and diagnostic tools need episode_state
+            if name in ["propose_fix", "submit_resolution", "update_config", "restart_service", "check_config", "read_logs"]:
                 return func(params, scenario, round_num, episode_state)
             else:
                 return func(params, scenario, round_num)

@@ -84,7 +84,10 @@ function mapBackendScenario(s, index) {
 
 const FILTERS = ['ALL', 'CRITICAL', 'COMPLIANCE', 'CUSTOM'];
 
+import { useApp } from '../context/AppContext';
+
 const ScenarioBrowserView = () => {
+    const { globalMaxSteps } = useApp();
     const [backendScenarios, setBackendScenarios] = useState([]);
     const [loadingBackend, setLoadingBackend] = useState(true);
     const [customScenarios, setCustomScenarios] = useState(() => {
@@ -140,7 +143,7 @@ const ScenarioBrowserView = () => {
     const injectScenario = async (scenario) => {
         try {
             const body = scenario.isBackend
-                ? { task: scenario.backendTask, seed: 42 }
+                ? { task: scenario.backendTask, seed: 42, max_steps: globalMaxSteps }
                 : {
                     task: 'custom-incident',
                     custom_scenario: {
@@ -149,7 +152,8 @@ const ScenarioBrowserView = () => {
                         context: `Domain: ${scenario.domain}`,
                         difficulty: scenario.difficulty,
                         clue_map: {}
-                    }
+                    },
+                    max_steps: globalMaxSteps
                 };
             await fetch('http://localhost:7860/reset', {
                 method: 'POST',

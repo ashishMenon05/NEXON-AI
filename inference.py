@@ -84,7 +84,7 @@ async def run():
     for task in TASKS:
         _print(f"[START] task={task['name']} env=nexus-incident-investigation model={MODEL_NAME}")
 
-        obs = await env.reset(task["name"])
+        obs = await env.reset(task["name"], seed=42)
         messages = [
             {"role": "system", "content": SYSTEM_PROMPT},
         ]

@@ -58,6 +58,14 @@ async def simulation_loop():
             )
             obs, reward, done, info = await episode_manager.step(action)
             logger.info(f"Step {step_num} completed. Reward: {reward}. Done: {done}")
+            
+            if done:
+                await broadcast("agent_partial", {
+                    "agent_id": "system",
+                    "chunk": "",
+                    "full_message": f"\n\n[SYSTEM] EPISODE CONCLUDED. Final Validation Score: {info.get('final_score', 0)}\nSimulation halted."
+                })
+                break
         except Exception as e:
             logger.error(f"Error in simulation loop at step {step_num}: {e}")
             break
@@ -74,6 +82,7 @@ class ResetRequest(BaseModel):
     task: str = "software-incident"
     custom_scenario: Optional[Dict[str, Any]] = None
     seed: Optional[int] = None
+    max_steps: Optional[int] = None
 
 class StepResponse(BaseModel):
     observation: NexusObservation
@@ -91,7 +100,7 @@ async def start_simulation():
 @router.post("/reset", response_model=NexusObservation)
 async def reset_env(req: ResetRequest):
     try:
-        obs = await episode_manager.reset(req.task, req.custom_scenario, seed=req.seed)
+        obs = await episode_manager.reset(req.task, req.custom_scenario, seed=req.seed, max_steps=req.max_steps)
         return obs
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

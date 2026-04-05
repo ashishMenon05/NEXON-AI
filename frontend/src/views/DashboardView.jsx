@@ -4,23 +4,8 @@ import AgentTerminal from '../components/AgentTerminal';
 import DynamicScenarioInjector from '../components/DynamicScenarioInjector';
 import EpisodeEndOverlay from '../components/EpisodeEndOverlay';
 
-const LiveTimer = ({ status }) => {
-    const [seconds, setSeconds] = useState(0);
-
-    useEffect(() => {
-        if (status === 'STANDBY' || status === 'COMPLETED') {
-            setSeconds(0);
-            return;
-        }
-        if (status === 'PAUSED') {
-            return; // hold current seconds
-        }
-        // status is 'INVESTIGATING'
-        const interval = setInterval(() => {
-            setSeconds(s => s + 1);
-        }, 1000);
-        return () => clearInterval(interval);
-    }, [status]);
+const LiveTimer = () => {
+    const { simulationSeconds } = useApp();
 
     const format = (secs) => {
         const m = Math.floor(secs / 60).toString().padStart(2, '0');
@@ -28,7 +13,7 @@ const LiveTimer = ({ status }) => {
         return `${m}:${s}`;
     };
 
-    return <span>{format(seconds)}</span>;
+    return <span>{format(simulationSeconds)}</span>;
 };
 
 const SystemTelemetryWidget = ({ status, agentAStatus, agentBStatus }) => {
@@ -188,7 +173,7 @@ const DashboardView = () => {
                     <div className="text-right">
                         <p className="text-[10px] font-mono text-slate-500 uppercase tracking-widest">Runtime</p>
                         <p className="font-mono text-lg text-white">
-                            <LiveTimer status={state.status || 'STANDBY'} />
+                            <LiveTimer />
                         </p>
                     </div>
                     <div className="h-10 w-px bg-outline-variant/20"></div>

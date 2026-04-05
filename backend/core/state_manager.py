@@ -3,7 +3,7 @@ from typing import List, Dict, Any
 from api.schemas.state import NexusState
 
 class EpisodeState:
-    def __init__(self, scenario_id: str, task: str, difficulty: str, max_rounds: int):
+    def __init__(self, scenario_id: str, task: str, difficulty: str, max_rounds: int, scenario_data: dict = None):
         self.episode_id = str(uuid.uuid4())
         self.scenario_id = scenario_id
         self.task = task
@@ -32,6 +32,9 @@ class EpisodeState:
         
         self.investigation_stage = "investigating"
         self.steps_taken = 0
+        
+        import copy
+        self.system_state = copy.deepcopy(scenario_data.get("initial_state", {})) if scenario_data else {}
 
     def add_message(self, agent_id: str, message: str):
         self.steps_taken += 1

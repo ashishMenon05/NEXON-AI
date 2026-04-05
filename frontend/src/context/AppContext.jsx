@@ -1,16 +1,36 @@
-import React, { createContext, useContext, useMemo } from 'react';
+import React, { createContext, useContext, useMemo, useState, useEffect } from 'react';
 import useWebSocket from '../hooks/useWebSocket';
 
 const AppContext = createContext();
 
 export const AppProvider = ({ children }) => {
+    const [globalMaxSteps, setGlobalMaxSteps] = useState(30);
+    const [simulationSeconds, setSimulationSeconds] = useState(0);
     const { gameState, isConnected, sendCommand } = useWebSocket('ws://localhost:7860/ws');
+
+    useEffect(() => {
+        const status = gameState?.status;
+        if (status === 'STANDBY' || status === 'COMPLETED') {
+            setSimulationSeconds(0);
+            return;
+        }
+        if (status === 'PAUSED') {
+            return;
+        }
+        const interval = setInterval(() => {
+            setSimulationSeconds(s => s + 1);
+        }, 1000);
+        return () => clearInterval(interval);
+    }, [gameState?.status]);
 
     const value = useMemo(() => ({
         sessionData: gameState,
         isConnected,
-        sendCommand
-    }), [gameState, isConnected, sendCommand]);
+        sendCommand,
+        globalMaxSteps,
+        setGlobalMaxSteps,
+        simulationSeconds
+    }), [gameState, isConnected, sendCommand, globalMaxSteps, simulationSeconds]);
 
     return (
         <AppContext.Provider value={value}>

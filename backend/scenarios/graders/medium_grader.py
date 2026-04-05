@@ -4,41 +4,42 @@ class MediumGrader(BaseGrader):
     def grade(self, episode_state, scenario: dict) -> float:
         score = 0.0
         criteria = scenario.get('grading_criteria', {})
+        sys_state = getattr(episode_state, "system_state", {})
         
-        all_msgs = [m.lower() for m in episode_state.agent_a_messages + episode_state.agent_b_messages]
+        # 1. State Mutation Checks for root cause
+        inv_state = sys_state.get("inventory-service", {})
         
-        root_cause = scenario.get("root_cause", {})
-        affected_service = root_cause.get("affected_service", "").lower()
-        affected_param = root_cause.get("affected_parameter", "").lower()
-        
-        # Identified core issue pieces
-        if affected_service and any(affected_service in msg for msg in all_msgs):
-            keys_matching = [k for k in criteria.keys() if "identified" in k]
-            if len(keys_matching) > 0:
-                score += criteria[keys_matching[0]]
-                
-        if affected_param and any(affected_param in msg for msg in all_msgs):
-            keys_matching = [k for k in criteria.keys() if "identified" in k]
-            if len(keys_matching) > 1:
-                score += criteria[keys_matching[1]]
+        threshold = inv_state.get("minimum_stock_threshold")
+        if str(threshold) == "0":
+            score += criteria.get("inventory_threshold_fixed", 0.45)
+            
+        if inv_state.get("status") == "running" and inv_state.get("last_reload") == "Just now":
+            score += criteria.get("inventory_restarted", 0.10)
 
+        # 2. Penalize red herrings tracking tool calls
+        cdn_modified = False
+        tool_calls = getattr(episode_state, "tool_calls_made", [])
+        for call in tool_calls:
+            if call["tool_name"] in ["update_config", "restart_service"]:
+                if call["params"].get("service", "") == "cdn-edge-node":
+                    cdn_modified = True
+                    break
+        
+        if cdn_modified:
+            score += criteria.get("penalty_cdn_edge_node_modified", -0.15)
+
+        # 3. Episode boundaries
         if getattr(episode_state, "fix_correct", False) or episode_state.fix_verified:
-            score += criteria.get('correct_fix_proposed', 0)
+            # If they achieved state but didn't verify cleanly
+            if str(threshold) == "0" and not episode_state.fix_verified:
+                score += criteria.get('fix_verified', 0.20) / 2 # Partial for fixing but not verifying
                 
         if episode_state.fix_verified:
-            score += criteria.get('fix_verified', 0)
+            score += criteria.get('fix_verified', 0.20)
             
         if episode_state.max_rounds > 0:
             steps_ratio = episode_state.current_round / episode_state.max_rounds
-            if steps_ratio <= 0.5 and episode_state.fix_verified:
-                score += criteria.get('efficiency_bonus', 0)
-                
-        # Medium adds penalty for red herrings
-        red_herrings = scenario.get("red_herrings", [])
-        # We can extract penalty from criteria keys that start with "penalty_"
-        penalty_keys = [k for k in criteria.keys() if k.startswith("penalty_")]
-        for pk in penalty_keys:
-            # If the red herring service/keyword was mentioned excessively
-            score += criteria[pk] # usually a negative number
-            
+            if steps_ratio <= 0.6 and episode_state.fix_verified and str(threshold) == "0":
+                score += criteria.get('efficiency_bonus', 0.10)
+
         return max(0.0, min(1.0, round(score, 4)))

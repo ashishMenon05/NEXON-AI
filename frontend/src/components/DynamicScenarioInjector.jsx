@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { useApp } from '../context/AppContext';
 
 const DynamicScenarioInjector = ({ scenario }) => {
+    const { globalMaxSteps, setGlobalMaxSteps } = useApp();
     const [mode, setMode] = useState('simple'); // 'simple' or 'structured'
 
     // Auto-update injector fields when scenario prop changes
@@ -68,10 +70,12 @@ objective: Identify if a missing index or connection pool exhaustion is the caus
                         context: "Manually injected scenario description.",
                         difficulty: "medium",
                         clue_map: {}
-                    }
+                    },
+                    max_steps: globalMaxSteps
                 };
             } else {
                 payload = JSON.parse(jsonInput);
+                payload.max_steps = globalMaxSteps;
             }
 
             const res = await fetch("http://localhost:7860/reset", {
@@ -140,6 +144,23 @@ objective: Identify if a missing index or connection pool exhaustion is the caus
                     <span className={`text-[10px] font-mono truncate ${feedback.includes('Error') ? 'text-error' : 'text-tertiary'}`}>
                         {feedback}
                     </span>
+                </div>
+                
+                <div className="flex items-center gap-4 bg-surface-container-highest p-2 rounded border border-white/5 mx-auto lg:mx-0">
+                    <div className="flex flex-col">
+                        <span className="text-[9px] font-mono uppercase text-on-surface-variant flex justify-between">
+                            <span>Max Steps</span>
+                            <span className="text-primary font-bold">{globalMaxSteps}</span>
+                        </span>
+                        <input 
+                            type="range" 
+                            min="1" 
+                            max="100" 
+                            value={globalMaxSteps} 
+                            onChange={e => setGlobalMaxSteps(parseInt(e.target.value))} 
+                            className="w-32 accent-primary h-1 bg-surface-container-lowest rounded-lg appearance-none cursor-pointer mt-1" 
+                        />
+                    </div>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3 shrink-0">

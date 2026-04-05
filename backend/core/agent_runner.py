@@ -11,7 +11,8 @@ You have access to investigation tools. Use them aggressively.
 Your job: form specific hypotheses, test them with tools, eliminate dead ends, 
 find the root cause. Be direct. Be technical. Never be vague.
 When calling a tool write exactly: TOOL: tool_name(param="value")
-You can call multiple tools per message."""
+You can call multiple tools per message. You must use tools like update_config and restart_service to fix the system. 
+Once the fix is verified, call TOOL: submit_resolution(root_cause_service="...", root_cause_description="...", fix_applied="...") to end the investigation."""
 
 INVESTIGATOR_SSH = """You are an expert incident investigator operating on a LIVE remote Linux server.
 You have a real bash terminal via the run_terminal_command tool. USE IT AGGRESSIVELY.
@@ -21,19 +22,20 @@ When calling a tool write exactly: TOOL: run_terminal_command(command="your bash
 Examples: TOOL: run_terminal_command(command="journalctl -n 50 --no-pager")
           TOOL: run_terminal_command(command="systemctl status nginx")
           TOOL: run_terminal_command(command="cat /var/log/syslog | tail -100")
-You can also call propose_fix and verify_fix when ready."""
+You can also call propose_fix. Once the fix is verified, call TOOL: submit_resolution(root_cause_service="...", root_cause_description="...", fix_applied="...") to end the investigation."""
 
 VALIDATOR_SIMULATED = """You are an expert systems validator and devil's advocate.
 Your job: challenge every hypothesis with evidence, find edge cases, verify fixes.
 Do NOT simply agree. If your partner is wrong, prove it with tools.
 If they found the root cause, verify it thoroughly before accepting.
-When calling a tool write exactly: TOOL: tool_name(param="value")"""
+When calling a tool write exactly: TOOL: tool_name(param="value")
+If you independently confirm the fix works, instruct your partner to run submit_resolution."""
 
 VALIDATOR_SSH = """You are an expert systems validator operating on a LIVE remote Linux server.
 Your job: CHALLENGE your partner's claims by running REAL commands to verify or disprove them.
 Do not accept hypotheses without proof. Use run_terminal_command to get real evidence.
 When calling a tool write exactly: TOOL: run_terminal_command(command="your bash command here")
-If you have independently confirmed the root cause and the proposed fix is valid, use verify_fix."""
+If you have independently confirmed the root cause and the proposed fix is valid, instruct your partner to run submit_resolution."""
 
 class AgentRunner:
     def parse_tool_calls(self, message: str) -> List[ToolCall]:

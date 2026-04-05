@@ -4,44 +4,51 @@ class HardGrader(BaseGrader):
     def grade(self, episode_state, scenario: dict) -> float:
         score = 0.0
         criteria = scenario.get('grading_criteria', {})
+        sys_state = getattr(episode_state, "system_state", {})
         
-        all_msgs = [m.lower() for m in episode_state.agent_a_messages + episode_state.agent_b_messages]
+        # 1. State Mutation Checks for root cause
+        pg_state = sys_state.get("postgres-db", {})
         
-        # Hard grader adds cascade order correctness scoring and prevention plan checking
-        root_cause = scenario.get("root_cause", {})
-        affected_service = root_cause.get("affected_service", "").lower()
-        affected_param = root_cause.get("affected_parameter", "").lower()
+        # Determine if query was terminated (agent updated long_running_query to None/null string)
+        q_val = str(pg_state.get("long_running_query")).lower()
+        if q_val in ["none", "null", ""]:
+            score += criteria.get("postgres_query_terminated", 0.25)
+            
+        max_conn = pg_state.get("max_connections", 20)
+        try:
+            if int(max_conn) >= 50:
+                score += criteria.get("postgres_max_connections_increased", 0.20)
+        except ValueError:
+            pass
+            
+        timeout = pg_state.get("query_timeout_analytics")
+        try:
+            if timeout and int(timeout) > 0:
+                score += criteria.get("postgres_query_timeout_set", 0.20)
+        except ValueError:
+            pass
+
+        # 2. Penalize red herrings
+        disk_modified = False
+        tool_calls = getattr(episode_state, "tool_calls_made", [])
+        for call in tool_calls:
+            if call["tool_name"] in ["update_config", "restart_service"]:
+                if call["params"].get("service", "") == "disk-backup-agent":
+                    disk_modified = True
+                    break
         
-        keys_matching_ident = [k for k in criteria.keys() if "identified" in k]
-        
-        if affected_service and any(affected_service in msg for msg in all_msgs):
-            if len(keys_matching_ident) > 0:
-                score += criteria[keys_matching_ident[0]]
-                
-        if affected_param and any(affected_param in msg for msg in all_msgs):
-            if len(keys_matching_ident) > 1:
-                score += criteria[keys_matching_ident[1]]
-                
-        if getattr(episode_state, "fix_correct", False) or episode_state.fix_verified:
-            if "ordered_fix_proposed" in criteria:
-                score += criteria.get("ordered_fix_proposed", 0)
-            else:
-                score += criteria.get('correct_fix_proposed', 0)
-                
+        if disk_modified:
+            score += criteria.get("penalty_disk_backup_agent_modified", -0.15)
+
+        # 3. Episode boundaries
         if episode_state.fix_verified:
-            score += criteria.get('fix_verified', 0)
+            # Full sequence
+            if q_val in ["none", "null", ""] and int(max_conn) >= 50:
+                score += criteria.get('fix_verified', 0.10)
             
         if episode_state.max_rounds > 0:
             steps_ratio = episode_state.current_round / episode_state.max_rounds
-            if steps_ratio <= 0.5 and episode_state.fix_verified:
-                score += criteria.get('efficiency_bonus', 0)
-                
-        if "prevention_plan_mentioned" in criteria:
-            if any(term in msg for msg in all_msgs for term in ["prevent", "avoid in future", "add alert", "plan", "safeguard"]):
-                score += criteria["prevention_plan_mentioned"]
+            if steps_ratio <= 0.6 and episode_state.fix_verified and q_val in ["none", "null", ""]:
+                score += criteria.get('efficiency_bonus', 0.05)
 
-        if "recalculation_step_mentioned" in criteria:
-            if any(term in msg for msg in all_msgs for term in ["recalculate", "backfill", "recompute"]):
-                score += criteria["recalculation_step_mentioned"]
-                
         return max(0.0, min(1.0, round(score, 4)))

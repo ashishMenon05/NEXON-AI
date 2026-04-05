@@ -9,7 +9,7 @@ class EpisodeManager:
         self.is_paused = False
         self.simulation_task = None
 
-    async def reset(self, task: str, custom_scenario: dict = None, seed: int = None):
+    async def reset(self, task: str, custom_scenario: dict = None, seed: int = None, max_steps: int = None):
         # Cancel any active simulation loop
         if hasattr(self, 'simulation_task') and self.simulation_task and not self.simulation_task.done():
             self.simulation_task.cancel()
@@ -19,7 +19,7 @@ class EpisodeManager:
                 pass
             self.simulation_task = None
 
-        obs = await self.env.reset(task=task, custom_scenario=custom_scenario)
+        obs = await self.env.reset(task=task, custom_scenario=custom_scenario, seed=seed, max_steps=max_steps)
         
         # Broadcast episode_start
         sc_safe = self.env.active_scenario.copy()
