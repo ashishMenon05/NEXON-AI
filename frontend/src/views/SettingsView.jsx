@@ -44,19 +44,23 @@ const OllamaModelPicker = ({ value, onChange, accentColor }) => {
                     <span className="text-[10px] font-mono text-error">{error}</span>
                 </div>
             ) : (
-                <select
-                    value={value}
-                    onChange={e => onChange(e.target.value)}
-                    className={`w-full bg-surface-container-lowest border-b ${borderClass} py-2 font-mono text-sm text-on-surface cursor-pointer focus:outline-none transition-all`}
-                >
-                    <option value="">— Select model —</option>
-                    {models.map(m => (
-                        <option key={m.name} value={m.name}>{m.name}</option>
-                    ))}
-                </select>
+                <>
+                    <input
+                        list={`models-${accentColor}`}
+                        value={value}
+                        onChange={e => onChange(e.target.value)}
+                        placeholder="Type or select a local model..."
+                        className={`w-full bg-surface-container-lowest border-b ${borderClass} py-2 font-mono text-sm text-on-surface cursor-text focus:outline-none transition-all`}
+                    />
+                    <datalist id={`models-${accentColor}`}>
+                        {models.map(m => (
+                            <option key={m.name} value={m.name} />
+                        ))}
+                    </datalist>
+                </>
             )}
             {models.length > 0 && (
-                <p className={`text-[9px] font-mono ${textClass} opacity-50`}>{models.length} model{models.length !== 1 ? 's' : ''} available locally</p>
+                <p className={`text-[9px] font-mono ${textClass} opacity-50 text-right mt-1`}>{models.length} model{models.length !== 1 ? 's' : ''} available locally</p>
             )}
         </div>
     );

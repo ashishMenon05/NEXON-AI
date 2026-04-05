@@ -46,6 +46,12 @@ const TopNavBar = () => {
                         <span className="material-symbols-outlined text-sm">pause</span> PAUSE
                     </button>
                     <button
+                        onClick={() => sendCommand({ action: 'force_end' })}
+                        className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#f59e0b]/10 border border-[#f59e0b]/20 text-[#f59e0b] text-xs font-bold hover:bg-[#f59e0b]/20 transition-all active:scale-95"
+                    >
+                        <span className="material-symbols-outlined text-sm">stop_circle</span> FORCE END
+                    </button>
+                    <button
                         onClick={() => sendCommand({ action: 'reset' })}
                         className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-error/10 border border-error/20 text-error text-xs font-bold hover:bg-error/20 transition-all active:scale-95"
                     >

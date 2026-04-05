@@ -64,6 +64,28 @@ const ScenarioBrowserView = () => {
     const [activeFilter, setActiveFilter] = useState('ALL');
     const [sortBy, setSortBy] = useState('id');
 
+    const injectScenario = async (scenario) => {
+        try {
+            await fetch("http://localhost:7860/reset", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    task: "custom-incident",
+                    custom_scenario: {
+                        id: `id_${Date.now()}`,
+                        description: `[${scenario.title}] ${scenario.description}`,
+                        context: `Domain: ${scenario.domain}`,
+                        difficulty: "medium",
+                        clue_map: {}
+                    }
+                })
+            });
+            window.location.hash = '#';
+        } catch (e) {
+            console.error("Failed to inject", e);
+        }
+    };
+
     const filtered = ALL_SCENARIOS
         .filter(s => activeFilter === 'ALL' || s.tag === activeFilter)
         .sort((a, b) => sortBy === 'difficulty' ? b.difficultyNum - a.difficultyNum : a.id - b.id);
@@ -158,7 +180,7 @@ const ScenarioBrowserView = () => {
                                     <p className="text-sm text-on-surface-variant flex-1 line-clamp-2">{s.description}</p>
                                     <div className="pt-4 border-t border-outline-variant/10 flex items-center justify-between">
                                         <div className="font-mono text-[9px] text-slate-600 uppercase">{s.difficulty}</div>
-                                        <button className={`flex items-center gap-1.5 text-[10px] font-mono font-bold tracking-widest ${ac.text} hover:text-white transition-colors`}>
+                                        <button onClick={() => injectScenario(s)} className={`flex items-center gap-1.5 text-[10px] font-mono font-bold tracking-widest ${ac.text} hover:text-white transition-colors`}>
                                             SELECT SCENARIO
                                             <span className="material-symbols-outlined text-xs">arrow_forward</span>
                                         </button>

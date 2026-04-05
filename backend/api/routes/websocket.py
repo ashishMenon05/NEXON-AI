@@ -54,6 +54,11 @@ async def websocket_endpoint(websocket: WebSocket):
                     await broadcast("system_status", {"paused": episode_manager.is_paused})
                 elif action == "reset":
                     await episode_manager.reset(task="software-incident")
+                elif action == "force_end":
+                    if episode_manager.env and episode_manager.env.active_episode:
+                        # Force done conditions
+                        episode_manager.env.active_episode.done = True
+                        episode_manager.env.active_episode.fix_verified = True
             except Exception as e:
                 logger.error(f"Error handling WS command: {e}")
     except WebSocketDisconnect:

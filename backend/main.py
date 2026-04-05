@@ -28,6 +28,15 @@ app.include_router(config_routes.router)
 app.include_router(scenario_routes.router)
 app.include_router(model_routes.router)
 
+# ── Health check (required by HF Space automated ping) ─────────────────────
+@app.get("/health")
+async def health():
+    return {"status": "ok", "env": "nexus-incident-investigation"}
+
+@app.get("/")
+async def root():
+    return {"name": "NEXUS", "version": "1.0.0", "status": "running"}
+
 async def check_ollama():
     try:
         async with httpx.AsyncClient() as client:

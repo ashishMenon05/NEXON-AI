@@ -92,8 +92,8 @@ class NexusEnvironment:
         # 3. Compute semantic reward dynamically
         reward, breakdown = compute_reward(action.message, action.tool_calls, tool_results_data, ep, sc)
         
-        # 4. Check Done conditions
-        if ep.fix_verified or ep.current_round >= ep.max_rounds or ep.steps_taken >= (ep.max_rounds * 2):
+        # Only stop when fix is verified by both agents — no arbitrary step limit
+        if ep.fix_verified:
             ep.done = True
             
             # Final scoring overrides semantic cumulative reward in openenv inference if grader is used

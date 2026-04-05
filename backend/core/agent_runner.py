@@ -73,7 +73,7 @@ class AgentRunner:
             context += f"Partner's last message: {episode_state.last_partner_message}\n"
         if hasattr(episode_state, 'clues_found') and episode_state.clues_found:
             context += f"Clues found: {episode_state.clues_found}\n"
-        context += f"Round: {episode_state.current_round}/{episode_state.max_rounds}\n"
+        # Note: don't mention rounds - let agents reason freely until consensus
         
         # We append history
         messages = [{"role": "system", "content": sys_prompt}]
@@ -94,8 +94,8 @@ class AgentRunner:
             stream = await client.chat.completions.create(
                 model=model_name,
                 messages=messages,
-                max_tokens=300,
-                timeout=30.0,
+                max_tokens=2048,
+                timeout=60.0,
                 stream=True
             )
             async for chunk in stream:

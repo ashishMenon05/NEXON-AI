@@ -1,7 +1,109 @@
 import React from 'react';
 
-const EpisodeEndOverlay = ({ isOpen, onClose, metrics }) => {
+const EpisodeEndOverlay = ({ isOpen, onClose, metrics, gameState }) => {
     if (!isOpen) return null;
+
+    const handleDownload = () => {
+        if (!gameState) return;
+
+        // Assemble the detailed incident report
+        const sc = gameState.scenario || {};
+        const agentA = gameState.agents?.agent_a?.messages || [];
+        const agentB = gameState.agents?.agent_b?.messages || [];
+        
+        let report = `=================================================================\n`;
+        report += `                  NEXUS INCIDENT INVESTIGATION REPORT            \n`;
+        report += `=================================================================\n\n`;
+        
+        report += `[ SCENARIO METADATA ]\n`;
+        report += `Title:           ${sc.id || 'N/A'}\n`;
+        report += `Domain:          ${sc.domain || 'N/A'}\n`;
+        report += `Difficulty:      ${sc.difficulty || 'N/A'}\n`;
+        report += `Final Score:     ${metrics?.score || 'N/A'}\n`;
+        report += `Total Steps:     ${metrics?.steps || 'N/A'}\n\n`;
+
+        report += `[ INCIDENT DESCRIPTION & PROBLEM ]\n`;
+        report += `${sc.description || 'No description provided.'}\n\n`;
+        
+        report += `[ CONTEXT & ROOT CAUSE ]\n`;
+        report += `${sc.context || 'No context provided.'}\n`;
+        report += `Actual Root Cause Validation: ${metrics?.rootCause || 'N/A'}\n\n`;
+
+        report += `=================================================================\n`;
+        report += `[ INVESTIGATION LOG & DETAILED TRACE ]\n`;
+        report += `=================================================================\n\n`;
+
+        // Interweave the messages to show the timeline (roughly)
+        // Since we don't have exact timestamps, we'll just print Agent A then Agent B summary,
+        // or just print all tools called and errors encountered.
+        const allErrors = [];
+        const allTools = [];
+
+        [...agentA, ...agentB].forEach(msg => {
+            if (msg.type === 'tool_call') {
+                allTools.push(`- ${msg.tool_name}(${JSON.stringify(msg.params)})`);
+            }
+            if (msg.type === 'tool_result' && !msg.success) {
+                allErrors.push(`- Error from ${msg.tool_name}: ${msg.result}`);
+            }
+            if (msg.type === 'tool_result' && msg.result?.toLowerCase().includes('error')) {
+                // Catch strings that say error but were marked success true somehow
+                allErrors.push(`- Log/Cmd Error: ${msg.result}`);
+            }
+        });
+
+        report += `> EXECUTED TOOLS & COMMANDS:\n`;
+        if (allTools.length > 0) {
+            allTools.forEach(t => report += `${t}\n`);
+        } else {
+            report += `None.\n`;
+        }
+        report += `\n`;
+
+        report += `> SYSTEMS ERRORS DETECTED DURING INVESTIGATION:\n`;
+        if (allErrors.length > 0) {
+            // deduplicate
+            [...new Set(allErrors)].forEach(err => report += `${err}\n`);
+        } else {
+            report += `No significant system errors found during tool execution.\n`;
+        }
+        report += `\n`;
+
+        report += `=================================================================\n`;
+        report += `[ SOLUTION IMPLEMENTED & FIX VERIFICATION ]\n`;
+        report += `=================================================================\n\n`;
+        report += `The Validator Agent verified the proposed fix successfully, leading to the resolution of the incident.\n`;
+        report += `End-state: ${metrics?.rootCause === 'VERIFIED' ? 'SUCCESS' : 'UNKNOWN'}\n\n`;
+
+        report += `=================================================================\n`;
+        report += `[ TIPS FOR IMPROVEMENT & RECOMMENDATIONS ]\n`;
+        report += `=================================================================\n\n`;
+        report += `Based on the automated evaluation of this scenario, consider the following:\n`;
+        
+        if (allTools.length > 15) {
+            report += `1. EFFICIENCY: The agents called a large number of tools (${allTools.length}). Consider refining the initial hypothesis to reduce blind querying.\n`;
+        } else {
+            report += `1. EFFICIENCY: Tool execution was relatively concise (${allTools.length} calls).\n`;
+        }
+        
+        if (allErrors.length > 5) {
+            report += `2. ACCURACY: Multiple tool execution errors were encountered. Ensure exact syntax and correct tool parameters are used to minimize invalid calls.\n`;
+        }
+
+        report += `3. CAUSE-ANALYSIS: Always grep application error logs before querying databases to save time tracking downstream symptoms.\n`;
+        report += `4. REMEDIATION: Post-incident reviews should establish better automated alerting for the specific failure domain (${sc.domain || 'general'}).\n`;
+
+        // Trigger Download
+        const blob = new Blob([report], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `nexus_investigation_report_${sc.id || 'export'}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    };
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8 animate-in fade-in duration-500">
@@ -121,7 +223,7 @@ const EpisodeEndOverlay = ({ isOpen, onClose, metrics }) => {
                         <span className="font-mono text-[9px] uppercase tracking-wider">Session telemetry encrypted and cached locally</span>
                     </div>
                     <div className="flex gap-4 w-full md:w-auto">
-                        <button className="flex-1 md:flex-none px-8 py-2.5 bg-transparent border border-outline-variant/30 text-on-surface hover:bg-white/5 transition-all font-mono text-xs tracking-widest uppercase">
+                        <button onClick={handleDownload} className="flex-1 md:flex-none px-8 py-2.5 bg-transparent border border-outline-variant/30 text-on-surface hover:bg-white/5 transition-all font-mono text-xs tracking-widest uppercase">
                             Export Log
                         </button>
                         <button onClick={onClose} className="flex-1 md:flex-none px-12 py-2.5 bg-primary/20 border border-primary text-primary hover:bg-primary/30 transition-all font-mono text-xs tracking-widest font-bold uppercase shadow-[0_0_20px_rgba(0,212,255,0.1)]">
@@ -135,3 +237,4 @@ const EpisodeEndOverlay = ({ isOpen, onClose, metrics }) => {
 };
 
 export default EpisodeEndOverlay;
+
