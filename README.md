@@ -91,6 +91,23 @@ The result: An AI "Incident Response Team" that navigates servers, traces logs, 
 
 ---
 
+## 🌐 Execution Environments
+
+NEXUS-AI supports two distinct execution models for agent tools, toggleable via the **Settings** dashboard:
+
+### 1. Simulated Mode (Safe Sandbox)
+*   **Default Mode**: Agents interact with a pre-defined `clue_map` within the scenario YAML.
+*   **No System Impact**: Commands like `read_logs` or `check_service` return mocked data.
+*   **Use Case**: Training, logic validation, and "what-if" analysis without infrastructure risk.
+
+### 2. SSH Lab Node (Real-World Execution)
+*   **Live Connection**: Commands are executed in real-time on a remote Linux server via SSH.
+*   **Autonomous Terminal**: Agents use the `run_terminal_command` tool to browse logs, check systemd status, and inspect real configs.
+*   **Security**: Includes a command blocklist to prevent highly destructive operations (e.g., `rm -rf /`).
+*   **Use Case**: Actual incident response on isolated Lab/Staging nodes.
+
+---
+
 ## 🧠 The AI Pipeline Deep-Dive
 
 ### Step 1: Scenario Injection & Bootstrapping
@@ -141,6 +158,7 @@ def get_embedding(text: str) -> List[float]:
 | Transport Layer | WebSockets | Word-by-word streaming across UI boundaries |
 | Local AI Engine | Ollama | Native device acceleration, absolute privacy |
 | Remote Provider | HuggingFace Inference API | Drop-in SaaS alternatives |
+| SSH Connectivity | Paramiko | Secure remote shell execution for Lab Nodes |
 | Data Persistence | LocalStorage & `.env` Injection | Avoids over-architected SQL constraints |
 
 ---
@@ -151,6 +169,7 @@ def get_embedding(text: str) -> List[float]:
 - Python 3.10+
 - Node.js 18+
 - [Ollama](https://ollama.com/) (installed locally for model hosting)
+- **Optional**: A remote Linux VM (Ubuntu/Kali) with SSH enabled for Lab Node mode
 
 ---
 
