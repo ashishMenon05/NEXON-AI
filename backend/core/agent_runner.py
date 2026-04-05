@@ -6,36 +6,30 @@ from tools.tool_registry import registry
 from utils.logger import logger
 from config import settings
 
-INVESTIGATOR_SIMULATED = """You are an expert incident investigator with deep systems knowledge.
-You have access to investigation tools. Use them aggressively.
-Your job: form specific hypotheses, test them with tools, eliminate dead ends, 
-find the root cause. Be direct. Be technical. Never be vague.
-When calling a tool write exactly: TOOL: tool_name(param="value")
-You can call multiple tools per message. You must use tools like update_config and restart_service to fix the system. 
-Once the fix is verified, call TOOL: submit_resolution(root_cause_service="...", root_cause_description="...", fix_applied="...") to end the investigation."""
+ROLE_DEFINITIONS = {
+    "INVESTIGATOR": "You are an expert incident investigator with deep systems knowledge. Your job: form specific hypotheses, test them with tools, eliminate dead ends, and find the root cause. Be direct. Be technical. Never be vague.",
+    "VALIDATOR": "You are an expert systems validator and devil's advocate. Your job: challenge every hypothesis with evidence, find edge cases, and verify fixes. Do NOT simply agree. If your partner is wrong, prove it with tools. If they found the root cause, verify it thoroughly before accepting.",
+    "FORENSIC_ANALYST": "You are an elite digital forensic analyst. Focus heavily on reading logs, inspecting file timestamps, memory dumps, and tracing bash histories. Do not guess—look for precise digital fingerprints and anomalies deep in the system logs.",
+    "NETWORK_ENGINEER": "You are a senior network engineer. Focus exclusively on port communication, routing tables, ping, active TCP/UDP connections, and firewall configurations. Your instinct is to determine how the threat or failure is propagating across the internal mesh.",
+    "SYSTEM_ADMIN": "You are a grizzled system administrator. Focus on core OS services, user permissions, kernel messages (dmesg), cron jobs, and runaway processes. Fix operational misconfigurations logically and decisively.",
+    "SECURITY_ARCHITECT": "You are a rigorous security architect. You look for structural flaws: overly permissive firewall rules, unencrypted traffic flows, and exposed secrets. Treat every incident as a potential systemic breach.",
+    "COMPLIANCE_OFFICER": "You are a strict compliance and audit officer. You focus strictly on policy violations and unauthorized data access. Identify unapproved tools and non-compliant execution paths. Prioritize strict adherence over operational speed."
+}
 
-INVESTIGATOR_SSH = """You are an expert incident investigator operating on a LIVE remote Linux server.
-You have a real bash terminal via the run_terminal_command tool. USE IT AGGRESSIVELY.
-Do NOT theorize without evidence — run commands to get facts. You have root access.
-Your job: ssh into the system, read real logs, check real services, identify the root cause.
+TOOL_INSTRUCTIONS_SIMULATED = """
+You have access to simulation tools. When calling a tool write exactly: TOOL: tool_name(param="value")
+You can call multiple tools per message. You must use tools like update_config and restart_service to fix the system. 
+Once the fix is verified entirely, call TOOL: submit_resolution(root_cause_service="...", root_cause_description="...", fix_applied="...") to end the investigation.
+"""
+
+TOOL_INSTRUCTIONS_SSH = """
+You are operating on a LIVE remote Linux server. You have a real bash terminal via the run_terminal_command tool. USE IT AGGRESSIVELY.
+You have root access. Do NOT theorize without evidence — run actual commands to get facts.
 When calling a tool write exactly: TOOL: run_terminal_command(command="your bash command here")
 Examples: TOOL: run_terminal_command(command="journalctl -n 50 --no-pager")
           TOOL: run_terminal_command(command="systemctl status nginx")
-          TOOL: run_terminal_command(command="cat /var/log/syslog | tail -100")
-You can also call propose_fix. Once the fix is verified, call TOOL: submit_resolution(root_cause_service="...", root_cause_description="...", fix_applied="...") to end the investigation."""
-
-VALIDATOR_SIMULATED = """You are an expert systems validator and devil's advocate.
-Your job: challenge every hypothesis with evidence, find edge cases, verify fixes.
-Do NOT simply agree. If your partner is wrong, prove it with tools.
-If they found the root cause, verify it thoroughly before accepting.
-When calling a tool write exactly: TOOL: tool_name(param="value")
-If you independently confirm the fix works, instruct your partner to run submit_resolution."""
-
-VALIDATOR_SSH = """You are an expert systems validator operating on a LIVE remote Linux server.
-Your job: CHALLENGE your partner's claims by running REAL commands to verify or disprove them.
-Do not accept hypotheses without proof. Use run_terminal_command to get real evidence.
-When calling a tool write exactly: TOOL: run_terminal_command(command="your bash command here")
-If you have independently confirmed the root cause and the proposed fix is valid, instruct your partner to run submit_resolution."""
+You can also call propose_fix. Once the fix is verified, call TOOL: submit_resolution(root_cause_service="...", root_cause_description="...", fix_applied="...") to end the investigation.
+"""
 
 class AgentRunner:
     def parse_tool_calls(self, message: str) -> List[ToolCall]:
@@ -83,13 +77,23 @@ class AgentRunner:
     async def run_step(self, agent_id: str, episode_state, scenario: dict):
         client, model_name = model_manager.get_client(agent_id)
         
-        # Select prompts based on execution mode
         is_ssh = settings.EXECUTION_MODE == "ssh"
-        if agent_id == "agent_a":
-            sys_prompt = INVESTIGATOR_SSH if is_ssh else INVESTIGATOR_SIMULATED
-        else:
-            sys_prompt = VALIDATOR_SSH if is_ssh else VALIDATOR_SIMULATED
+        tool_rules = TOOL_INSTRUCTIONS_SSH if is_ssh else TOOL_INSTRUCTIONS_SIMULATED
         
+        # Build System Prompt based on mapping
+        if agent_id == "agent_a":
+            role = settings.AGENT_A_ROLE
+            custom_prompt = settings.AGENT_A_SYSTEM_PROMPT
+        else:
+            role = settings.AGENT_B_ROLE
+            custom_prompt = settings.AGENT_B_SYSTEM_PROMPT
+
+        if role.startswith("CUSTOM_") and custom_prompt:
+            sys_prompt = custom_prompt + "\n\n" + tool_rules
+        else:
+            behavior = ROLE_DEFINITIONS.get(role, ROLE_DEFINITIONS["INVESTIGATOR"])
+            sys_prompt = behavior + "\n\n" + tool_rules
+
         # Build context
         context = f"Current incident: {scenario.get('description', '')}\n"
         if hasattr(episode_state, 'last_partner_message') and episode_state.last_partner_message:

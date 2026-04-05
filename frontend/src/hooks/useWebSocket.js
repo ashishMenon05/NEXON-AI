@@ -78,9 +78,19 @@ const useWebSocket = (url) => {
                     }
                 }
 
+                if (data.status === 'READY') {
+                    draft.status = 'READY_TO_INJECT';
+                    draft.active = false;
+                    draft.agents.agent_a.messages = [];
+                    draft.agents.agent_b.messages = [];
+                }
+
                 if (data.type === 'system_status') {
                     if (data.paused !== undefined) {
                         draft.status = data.paused ? 'PAUSED' : 'INVESTIGATING';
+                    }
+                    if (data.status) {
+                        draft.status = data.status;
                     }
                 }
 

@@ -116,7 +116,6 @@ const AnalyticsDrawer = () => {
 const TABS = [
     { id: 'communication', label: 'Communication', icon: 'forum' },
     { id: 'terminal', label: 'Terminal', icon: 'code' },
-    { id: 'analytics', label: 'Analytics', icon: 'insert_chart' },
 ];
 
 const Layout = ({ children }) => {
@@ -168,14 +167,14 @@ const Layout = ({ children }) => {
             {/* Footer tab bar */}
             <footer className="fixed bottom-0 left-0 w-full h-12 bg-background/90 backdrop-blur-2xl z-50 flex items-center border-t border-primary/15 px-8 shadow-[0_-10px_30px_rgba(0,0,0,0.5)]">
                 {/* Left: ticker */}
-                <div className="hidden md:flex items-center gap-2 mr-8 shrink-0 max-w-[260px] overflow-hidden">
+                <div className="flex-1 hidden md:flex items-center gap-2 overflow-hidden">
                     <span className="text-[9px] font-mono text-outline-variant italic uppercase tracking-tight whitespace-nowrap">
                         SYSTEM_INITIALIZED: STANDBY FOR AGENT HANDSHAKE...
                     </span>
                 </div>
 
                 {/* Centre: tabs */}
-                <div className="flex items-center gap-1 mx-auto">
+                <div className="flex items-center gap-1 shrink-0">
                     {TABS.map(tab => (
                         <button
                             key={tab.id}
@@ -192,7 +191,7 @@ const Layout = ({ children }) => {
                 </div>
 
                 {/* Right: session info */}
-                <div className="ml-auto hidden md:flex items-center gap-2 text-[9px] font-mono text-outline-variant/50 shrink-0">
+                <div className="flex-1 hidden md:flex items-center justify-end gap-2 text-[9px] font-mono text-outline-variant/50">
                     <span>SESSION: IDLE</span>
                 </div>
             </footer>

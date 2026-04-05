@@ -5,6 +5,7 @@ from api.schemas.observation import NexusObservation
 from api.schemas.state import NexusState
 from core.episode_manager import episode_manager
 import asyncio
+import psutil
 from core.agent_runner import AgentRunner
 from utils.logger import logger
 
@@ -94,7 +95,15 @@ class StepResponse(BaseModel):
 async def start_simulation():
     if hasattr(episode_manager, 'simulation_task') and episode_manager.simulation_task and not episode_manager.simulation_task.done():
         return {"status": "already_running"}
+    
+    # Auto-reset if no episode exists
+    if not episode_manager.env.active_episode:
+        logger.info("No active episode found for simulation. Performing auto-reset.")
+        await episode_manager.reset(task="software-incident")
+        
     episode_manager.simulation_task = asyncio.create_task(simulation_loop())
+    from api.routes.websocket import broadcast
+    await broadcast("system_status", {"active": True, "paused": False})
     return {"status": "started"}
 
 @router.post("/reset", response_model=NexusObservation)
@@ -126,3 +135,14 @@ def get_state():
     if not state:
         raise HTTPException(status_code=400, detail="No active episode")
     return state
+
+@router.get("/telemetry")
+def get_telemetry():
+    hw = check_hardware()
+    # Calling with interval=None returns percentage since last call
+    return {
+        "cpu": psutil.cpu_percent(interval=None),
+        "ram": psutil.virtual_memory().percent,
+        "gpu": hw["gpu_utilization"] if hw["use_gpu"] else 0,
+        "vram": (hw["vram_used_gb"] / hw["vram_total_gb"] * 100) if hw["use_gpu"] and hw["vram_total_gb"] > 0 else 0
+    }

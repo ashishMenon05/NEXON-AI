@@ -11,6 +11,10 @@ class ConfigUpdate(BaseModel):
     AGENT_B_MODEL: str
     AGENT_A_PROVIDER: str
     AGENT_B_PROVIDER: str
+    AGENT_A_ROLE: str = "INVESTIGATOR"
+    AGENT_B_ROLE: str = "VALIDATOR"
+    AGENT_A_SYSTEM_PROMPT: str = ""
+    AGENT_B_SYSTEM_PROMPT: str = ""
     AGENT_A_TEMPERATURE: float
     AGENT_B_TEMPERATURE: float
     EXECUTION_MODE: str = "simulated"
@@ -28,6 +32,10 @@ def get_config():
             "agent_b": settings.AGENT_B_MODEL,
             "agent_a_provider": settings.AGENT_A_PROVIDER,
             "agent_b_provider": settings.AGENT_B_PROVIDER,
+            "agent_a_role": settings.AGENT_A_ROLE,
+            "agent_b_role": settings.AGENT_B_ROLE,
+            "agent_a_system_prompt": settings.AGENT_A_SYSTEM_PROMPT,
+            "agent_b_system_prompt": settings.AGENT_B_SYSTEM_PROMPT,
             "agent_a_temp": settings.AGENT_A_TEMPERATURE,
             "agent_b_temp": settings.AGENT_B_TEMPERATURE
         },
@@ -52,6 +60,10 @@ def update_config(req: ConfigUpdate):
     settings.AGENT_B_MODEL = req.AGENT_B_MODEL
     settings.AGENT_A_PROVIDER = req.AGENT_A_PROVIDER
     settings.AGENT_B_PROVIDER = req.AGENT_B_PROVIDER
+    settings.AGENT_A_ROLE = req.AGENT_A_ROLE
+    settings.AGENT_B_ROLE = req.AGENT_B_ROLE
+    settings.AGENT_A_SYSTEM_PROMPT = req.AGENT_A_SYSTEM_PROMPT
+    settings.AGENT_B_SYSTEM_PROMPT = req.AGENT_B_SYSTEM_PROMPT
     settings.AGENT_A_TEMPERATURE = req.AGENT_A_TEMPERATURE
     settings.AGENT_B_TEMPERATURE = req.AGENT_B_TEMPERATURE
     settings.EXECUTION_MODE = req.EXECUTION_MODE
@@ -68,6 +80,10 @@ def update_config(req: ConfigUpdate):
         "AGENT_B_MODEL": req.AGENT_B_MODEL,
         "AGENT_A_PROVIDER": req.AGENT_A_PROVIDER,
         "AGENT_B_PROVIDER": req.AGENT_B_PROVIDER,
+        "AGENT_A_ROLE": req.AGENT_A_ROLE,
+        "AGENT_B_ROLE": req.AGENT_B_ROLE,
+        "AGENT_A_SYSTEM_PROMPT": req.AGENT_A_SYSTEM_PROMPT,
+        "AGENT_B_SYSTEM_PROMPT": req.AGENT_B_SYSTEM_PROMPT,
         "AGENT_A_TEMPERATURE": req.AGENT_A_TEMPERATURE,
         "AGENT_B_TEMPERATURE": req.AGENT_B_TEMPERATURE,
         "EXECUTION_MODE": req.EXECUTION_MODE,

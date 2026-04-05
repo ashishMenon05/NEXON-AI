@@ -48,17 +48,22 @@ async def websocket_endpoint(websocket: WebSocket):
                 action = cmd.get("action")
                 
                 if action == "start":
+                    logger.info("UI Command: START")
                     await start_simulation()
                 elif action == "pause":
                     episode_manager.is_paused = not episode_manager.is_paused
+                    logger.info(f"UI Command: PAUSE -> {episode_manager.is_paused}")
                     await broadcast("system_status", {"paused": episode_manager.is_paused})
                 elif action == "reset":
+                    logger.info("UI Command: RESET")
                     await episode_manager.reset(task="software-incident")
+                    await broadcast("system_status", {"paused": False, "status": "READY"})
                 elif action == "force_end":
+                    logger.info("UI Command: FORCE_END")
                     if episode_manager.env and episode_manager.env.active_episode:
-                        # Force done conditions
                         episode_manager.env.active_episode.done = True
                         episode_manager.env.active_episode.fix_verified = True
+                        await broadcast("system_status", {"status": "TERMINATING"})
             except Exception as e:
                 logger.error(f"Error handling WS command: {e}")
     except WebSocketDisconnect:

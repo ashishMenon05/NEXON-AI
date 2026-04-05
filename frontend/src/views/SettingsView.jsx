@@ -74,9 +74,11 @@ const OllamaModelPicker = ({ value, onChange, accentColor }) => {
     );
 };
 
+const ROLES = ["INVESTIGATOR", "VALIDATOR", "FORENSIC_ANALYST", "NETWORK_ENGINEER", "SYSTEM_ADMIN", "SECURITY_ARCHITECT", "COMPLIANCE_OFFICER", "CUSTOM_ROLE"];
+
 const SettingsView = () => {
-    const [agentA, setAgentA] = useState({ provider: 'ollama', model: '', hfModel: 'microsoft/Phi-3-mini-4k-instruct', temp: 0.8 });
-    const [agentB, setAgentB] = useState({ provider: 'ollama', model: '', hfModel: 'Qwen/Qwen2.5-3B-Instruct', temp: 0.6 });
+    const [agentA, setAgentA] = useState({ provider: 'ollama', model: '', hfModel: 'microsoft/Phi-3-mini-4k-instruct', temp: 0.8, role: 'INVESTIGATOR', customRoleName: '', customPrompt: '' });
+    const [agentB, setAgentB] = useState({ provider: 'ollama', model: '', hfModel: 'Qwen/Qwen2.5-3B-Instruct', temp: 0.6, role: 'VALIDATOR', customRoleName: '', customPrompt: '' });
     const [maxSteps, setMaxSteps] = useState(12);
     const [complexity, setComplexity] = useState('LEVEL_02: ADVERSARIAL');
     const [saved, setSaved] = useState(false);
@@ -89,17 +91,25 @@ const SettingsView = () => {
             try {
                 const res = await fetch('http://localhost:7860/config');
                 const data = await res.json();
+                const roleA = data.models.agent_a_role || 'INVESTIGATOR';
+                const roleB = data.models.agent_b_role || 'VALIDATOR';
                 setAgentA({
                     provider: data.models.agent_a_provider || 'ollama',
                     model: data.models.agent_a,
-                    hfModel: 'microsoft/Phi-3-mini-4k-instruct', // fallback
-                    temp: data.models.agent_a_temp
+                    hfModel: 'microsoft/Phi-3-mini-4k-instruct',
+                    temp: data.models.agent_a_temp,
+                    role: roleA.startsWith('CUSTOM_') ? 'CUSTOM_ROLE' : roleA,
+                    customRoleName: roleA.startsWith('CUSTOM_') ? roleA.replace('CUSTOM_', '').replace(/_/g, ' ') : '',
+                    customPrompt: data.models.agent_a_system_prompt || ''
                 });
                 setAgentB({
                     provider: data.models.agent_b_provider || 'ollama',
                     model: data.models.agent_b,
                     hfModel: 'Qwen/Qwen2.5-3B-Instruct',
-                    temp: data.models.agent_b_temp
+                    temp: data.models.agent_b_temp,
+                    role: roleB.startsWith('CUSTOM_') ? 'CUSTOM_ROLE' : roleB,
+                    customRoleName: roleB.startsWith('CUSTOM_') ? roleB.replace('CUSTOM_', '').replace(/_/g, ' ') : '',
+                    customPrompt: data.models.agent_b_system_prompt || ''
                 });
                 setMaxSteps(data.episode.max_steps);
                 if (data.execution) {
@@ -129,6 +139,10 @@ const SettingsView = () => {
                     AGENT_B_MODEL: agentB.provider === 'ollama' ? agentB.model : agentB.hfModel,
                     AGENT_A_PROVIDER: agentA.provider,
                     AGENT_B_PROVIDER: agentB.provider,
+                    AGENT_A_ROLE: agentA.role === 'CUSTOM_ROLE' ? `CUSTOM_${agentA.customRoleName.replace(/ /g, '_').toUpperCase()}` : agentA.role,
+                    AGENT_B_ROLE: agentB.role === 'CUSTOM_ROLE' ? `CUSTOM_${agentB.customRoleName.replace(/ /g, '_').toUpperCase()}` : agentB.role,
+                    AGENT_A_SYSTEM_PROMPT: agentA.customPrompt,
+                    AGENT_B_SYSTEM_PROMPT: agentB.customPrompt,
                     AGENT_A_TEMPERATURE: agentA.temp,
                     AGENT_B_TEMPERATURE: agentB.temp,
                     EXECUTION_MODE: executionMode,
@@ -157,6 +171,10 @@ const SettingsView = () => {
                 AGENT_B_MODEL: agentB.provider === 'ollama' ? agentB.model : agentB.hfModel,
                 AGENT_A_PROVIDER: agentA.provider,
                 AGENT_B_PROVIDER: agentB.provider,
+                AGENT_A_ROLE: agentA.role === 'CUSTOM_ROLE' ? `CUSTOM_${agentA.customRoleName.replace(/ /g, '_').toUpperCase()}` : agentA.role,
+                AGENT_B_ROLE: agentB.role === 'CUSTOM_ROLE' ? `CUSTOM_${agentB.customRoleName.replace(/ /g, '_').toUpperCase()}` : agentB.role,
+                AGENT_A_SYSTEM_PROMPT: agentA.customPrompt,
+                AGENT_B_SYSTEM_PROMPT: agentB.customPrompt,
                 AGENT_A_TEMPERATURE: agentA.temp,
                 AGENT_B_TEMPERATURE: agentB.temp,
                 EXECUTION_MODE: executionMode,
@@ -199,9 +217,9 @@ const SettingsView = () => {
                 </div>
             </section>
 
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-stretch">
                 {/* Agent A Config */}
-                <div className="md:col-span-6 glass-panel rounded-xl p-8 relative overflow-hidden group refractive-edge">
+                <div className="md:col-span-6 glass-panel rounded-xl p-8 relative overflow-hidden group refractive-edge h-full">
                     <div className="flex items-center gap-4 mb-8">
                         <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20">
                             <span className="material-symbols-outlined text-primary">smart_toy</span>
@@ -247,11 +265,47 @@ const SettingsView = () => {
                                 onChange={e => setAgentA(a => ({ ...a, temp: parseFloat(e.target.value) }))}
                             />
                         </div>
+                        <div className="space-y-4 pt-4 border-t border-white/5">
+                            <label className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">Operational Role</label>
+                            <select
+                                className="w-full bg-surface-container-lowest border-b border-primary/30 py-2 font-mono text-sm text-on-surface focus:outline-none focus:border-primary transition-all cursor-pointer"
+                                value={agentA.role}
+                                onChange={e => setAgentA(a => ({ ...a, role: e.target.value }))}
+                            >
+                                {ROLES.map(r => <option key={r} value={r}>{r.replace(/_/g, ' ')}</option>)}
+                            </select>
+
+                            {agentA.role === 'CUSTOM_ROLE' && (
+                                <div className="space-y-4 pt-2 animate-in fade-in slide-in-from-top-2">
+                                    <div className="space-y-2">
+                                        <label className="font-mono text-[9px] tracking-widest text-primary uppercase">Custom Role Title</label>
+                                        <input
+                                            type="text"
+                                            placeholder="e.g. DATABASE NINJA"
+                                            value={agentA.customRoleName}
+                                            onChange={e => setAgentA(a => ({ ...a, customRoleName: e.target.value }))}
+                                            className="w-full bg-transparent border-0 border-b border-primary/30 py-2 font-mono text-sm text-on-surface focus:outline-none focus:border-primary transition-all placeholder:text-slate-700"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="font-mono text-[9px] tracking-widest text-primary uppercase flex justify-between">
+                                            <span>System Prompt Configuration</span>
+                                        </label>
+                                        <textarea
+                                            placeholder="You are an elite expert... Your objective is to..."
+                                            value={agentA.customPrompt}
+                                            onChange={e => setAgentA(a => ({ ...a, customPrompt: e.target.value }))}
+                                            className="w-full h-32 bg-surface-container-lowest text-primary font-mono text-[10px] p-3 rounded border border-white/5 focus:border-primary/50 focus:outline-none leading-relaxed"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
 
                 {/* Agent B Config */}
-                <div className="md:col-span-6 glass-panel rounded-xl p-8 relative overflow-hidden group refractive-edge">
+                <div className="md:col-span-6 glass-panel rounded-xl p-8 relative overflow-hidden group refractive-edge h-full">
                     <div className="flex items-center gap-4 mb-8">
                         <div className="w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center border border-secondary/20">
                             <span className="material-symbols-outlined text-secondary">memory</span>
@@ -296,6 +350,42 @@ const SettingsView = () => {
                                 value={agentB.temp}
                                 onChange={e => setAgentB(b => ({ ...b, temp: parseFloat(e.target.value) }))}
                             />
+                        </div>
+                        <div className="space-y-4 pt-4 border-t border-white/5">
+                            <label className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">Operational Role</label>
+                            <select
+                                className="w-full bg-surface-container-lowest border-b border-secondary/30 py-2 font-mono text-sm text-on-surface focus:outline-none focus:border-secondary transition-all cursor-pointer"
+                                value={agentB.role}
+                                onChange={e => setAgentB(b => ({ ...b, role: e.target.value }))}
+                            >
+                                {ROLES.map(r => <option key={r} value={r}>{r.replace(/_/g, ' ')}</option>)}
+                            </select>
+
+                            {agentB.role === 'CUSTOM_ROLE' && (
+                                <div className="space-y-4 pt-2 animate-in fade-in slide-in-from-top-2">
+                                    <div className="space-y-2">
+                                        <label className="font-mono text-[9px] tracking-widest text-secondary uppercase">Custom Role Title</label>
+                                        <input
+                                            type="text"
+                                            placeholder="e.g. LOGICAL SKEPTIC"
+                                            value={agentB.customRoleName}
+                                            onChange={e => setAgentB(b => ({ ...b, customRoleName: e.target.value }))}
+                                            className="w-full bg-transparent border-0 border-b border-secondary/30 py-2 font-mono text-sm text-on-surface focus:outline-none focus:border-secondary transition-all placeholder:text-slate-700"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="font-mono text-[9px] tracking-widest text-secondary uppercase flex justify-between">
+                                            <span>System Prompt Configuration</span>
+                                        </label>
+                                        <textarea
+                                            placeholder="You are an expert... Challenge your partner..."
+                                            value={agentB.customPrompt}
+                                            onChange={e => setAgentB(b => ({ ...b, customPrompt: e.target.value }))}
+                                            className="w-full h-32 bg-surface-container-lowest text-secondary font-mono text-[10px] p-3 rounded border border-white/5 focus:border-secondary/50 focus:outline-none leading-relaxed"
+                                        />
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -421,8 +511,8 @@ const SettingsView = () => {
                 </div>
 
                 {/* Sync Status */}
-                <div className="md:col-span-4 space-y-6">
-                    <div className="glass-panel rounded-xl p-6 border-l-2 border-primary refractive-edge">
+                <div className="md:col-span-4 h-full">
+                    <div className="glass-panel rounded-xl p-8 border-l-2 border-primary refractive-edge h-full flex flex-col justify-center">
                         <h4 className="font-mono text-[10px] tracking-[0.2em] text-primary uppercase mb-4">Sync Status</h4>
                         <div className="space-y-2 font-mono text-[10px] text-slate-500 uppercase">
                             <p>Persistence: ACTIVE</p>

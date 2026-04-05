@@ -20,19 +20,23 @@ const TopNavBar = () => {
                 <div className="flex gap-2">
                     <button
                         onClick={() => sendCommand({ action: 'start' })}
-                        className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-tertiary/10 border border-tertiary/20 text-tertiary text-xs font-bold hover:bg-tertiary/20 transition-all active:scale-95"
+                        disabled={sessionData?.active && sessionData?.status !== 'PAUSED'}
+                        className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-tertiary/10 border border-tertiary/20 text-tertiary text-xs font-bold hover:bg-tertiary/20 transition-all active:scale-95 disabled:opacity-30 disabled:pointer-events-none"
                     >
                         <span className="material-symbols-outlined text-sm">play_arrow</span> START
                     </button>
                     <button
                         onClick={() => sendCommand({ action: 'pause' })}
-                        className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-secondary/10 border border-secondary/20 text-secondary text-xs font-bold hover:bg-secondary/20 transition-all active:scale-95"
+                        disabled={!sessionData?.active}
+                        className={`flex items-center gap-2 px-4 py-1.5 rounded-full border text-xs font-bold transition-all active:scale-95 disabled:opacity-30 ${sessionData?.status === 'PAUSED' ? 'bg-secondary text-surface border-secondary' : 'bg-secondary/10 border-secondary/20 text-secondary hover:bg-secondary/20'}`}
                     >
-                        <span className="material-symbols-outlined text-sm">pause</span> PAUSE
+                        <span className="material-symbols-outlined text-sm">{sessionData?.status === 'PAUSED' ? 'play_arrow' : 'pause'}</span> 
+                        {sessionData?.status === 'PAUSED' ? 'RESUME' : 'PAUSE'}
                     </button>
                     <button
                         onClick={() => sendCommand({ action: 'force_end' })}
-                        className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#f59e0b]/10 border border-[#f59e0b]/20 text-[#f59e0b] text-xs font-bold hover:bg-[#f59e0b]/20 transition-all active:scale-95"
+                        disabled={!sessionData?.active}
+                        className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#f59e0b]/10 border border-[#f59e0b]/20 text-[#f59e0b] text-xs font-bold hover:bg-[#f59e0b]/20 transition-all active:scale-95 disabled:opacity-30"
                     >
                         <span className="material-symbols-outlined text-sm">stop_circle</span> FORCE END
                     </button>

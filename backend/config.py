@@ -17,6 +17,10 @@ class Settings:
     AGENT_B_MODEL = os.getenv("AGENT_B_MODEL", "")
     AGENT_A_PROVIDER = os.getenv("AGENT_A_PROVIDER", "ollama") # or "hf"
     AGENT_B_PROVIDER = os.getenv("AGENT_B_PROVIDER", "ollama")
+    AGENT_A_ROLE = os.getenv("AGENT_A_ROLE", "INVESTIGATOR")
+    AGENT_B_ROLE = os.getenv("AGENT_B_ROLE", "VALIDATOR")
+    AGENT_A_SYSTEM_PROMPT = os.getenv("AGENT_A_SYSTEM_PROMPT", "")
+    AGENT_B_SYSTEM_PROMPT = os.getenv("AGENT_B_SYSTEM_PROMPT", "")
     AGENT_A_TEMPERATURE = float(os.getenv("AGENT_A_TEMPERATURE", "0.8"))
     AGENT_B_TEMPERATURE = float(os.getenv("AGENT_B_TEMPERATURE", "0.6"))
     AGENT_A_MAX_TOKENS = int(os.getenv("AGENT_A_MAX_TOKENS", "300"))

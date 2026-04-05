@@ -119,9 +119,6 @@ const SideNavBar = () => {
 
                 {/* Bottom utility buttons */}
                 <div className="mt-auto w-full group-hover:px-6">
-                    <button className="w-full h-12 mb-8 hidden group-hover:flex items-center justify-center gap-2 bg-primary/10 border border-primary/30 text-primary font-headline font-bold text-xs tracking-widest hover:bg-primary/20 transition-all rounded">
-                        DEPLOY AGENTS
-                    </button>
                     <div className="flex flex-col gap-2 items-center group-hover:items-start pb-4">
                         <button
                             onClick={() => togglePanel('status')}

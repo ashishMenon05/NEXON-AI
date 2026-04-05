@@ -16,39 +16,46 @@ const LiveTimer = () => {
     return <span>{format(simulationSeconds)}</span>;
 };
 
-const SystemTelemetryWidget = ({ status, agentAStatus, agentBStatus }) => {
-    // We will keep an array of 50 data points for 3 lines
+const SystemTelemetryWidget = ({ status }) => {
+    // We will keep an array of 50 data points for 2 lines (CPU and RAM)
     const maxPoints = 50;
-    const [dataPoints, setDataPoints] = useState(Array(maxPoints).fill({ sys: 20, agA: 5, agB: 5 }));
+    const [dataPoints, setDataPoints] = useState(Array(maxPoints).fill({ cpu: 0, ram: 0, gpu: 0, vram: 0 }));
 
     useEffect(() => {
-        const interval = setInterval(() => {
-            setDataPoints(prev => {
-                const next = [...prev.slice(1)];
-                let sys = 15 + Math.floor(Math.random() * 10); // baseline system usage
-                let agA = 5 + Math.floor(Math.random() * 5);   // baseline agent A
-                let agB = 5 + Math.floor(Math.random() * 5);   // baseline agent B
-
-                if (status === 'INVESTIGATING') {
-                    // if active, bump system a bit
-                    sys += 10;
-                    if (agentAStatus === 'ACTIVE') { agA += 40 + Math.floor(Math.random() * 40); sys += 15; }
-                    if (agentBStatus === 'ACTIVE') { agB += 40 + Math.floor(Math.random() * 40); sys += 15; }
+        let isActive = true;
+        
+        const fetchTelemetry = async () => {
+            try {
+                const res = await fetch('http://localhost:7860/telemetry');
+                if (!res.ok) return;
+                const data = await res.json();
+                
+                if (isActive) {
+                    setDataPoints(prev => {
+                        const next = [...prev.slice(1)];
+                        next.push({ 
+                            cpu: data.cpu || 0, 
+                            ram: data.ram || 0,
+                            gpu: data.gpu || 0,
+                            vram: data.vram || 0
+                        });
+                        return next;
+                    });
                 }
+            } catch (e) {
+                // Ignore errors gracefully
+            }
+        };
 
-                // clamp
-                sys = Math.min(100, sys);
-                agA = Math.min(100, agA);
-                agB = Math.min(100, agB);
+        const interval = setInterval(fetchTelemetry, 1000);
+        
+        return () => {
+            isActive = false;
+            clearInterval(interval);
+        };
+    }, []);
 
-                next.push({ sys, agA, agB });
-                return next;
-            });
-        }, 500);
-        return () => clearInterval(interval);
-    }, [status, agentAStatus, agentBStatus]);
-
-    const latest = dataPoints[dataPoints.length - 1];
+    const latest = dataPoints[dataPoints.length - 1] || { cpu: 0, ram: 0, gpu: 0, vram: 0 };
 
     // SVG coordinates computation
     const toPoints = (key) => dataPoints.map((dp, i) => `${(i / (maxPoints - 1)) * 100},${100 - dp[key]}`).join(' ');
@@ -57,13 +64,14 @@ const SystemTelemetryWidget = ({ status, agentAStatus, agentBStatus }) => {
         <section className="bg-surface-container-low/40 backdrop-blur-md rounded-lg p-5 border border-white/5 refractive-edge flex flex-col">
             <div className="flex items-center justify-between mb-4 shrink-0">
                 <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-outline text-sm">show_chart</span>
-                    <h3 className="text-xs font-bold font-headline tracking-widest uppercase text-outline">Compute / VRAM Alloc</h3>
+                    <span className="material-symbols-outlined text-outline text-sm">memory</span>
+                    <h3 className="text-xs font-bold font-headline tracking-widest uppercase text-outline">System Telemetry</h3>
                 </div>
-                <div className="flex gap-3 text-[9px] font-mono tracking-widest uppercase">
-                    <span className="flex items-center gap-1 text-[#64748b]"><span className="w-2 h-2 rounded-full bg-[#64748b]"></span> SYS {latest.sys}%</span>
-                    <span className="flex items-center gap-1 text-[#3b82f6]"><span className="w-2 h-2 rounded-full bg-[#3b82f6]"></span> AGT_A {latest.agA}%</span>
-                    <span className="flex items-center gap-1 text-[#10b981]"><span className="w-2 h-2 rounded-full bg-[#10b981]"></span> AGT_B {latest.agB}%</span>
+                <div className="flex flex-wrap gap-x-3 gap-y-1 text-[9px] font-mono tracking-widest uppercase">
+                    <span className="flex items-center gap-1 text-[#3b82f6]"><span className="w-2 h-2 rounded-full bg-[#3b82f6]"></span> CPU {Number(latest.cpu).toFixed(0)}%</span>
+                    <span className="flex items-center gap-1 text-[#10b981]"><span className="w-2 h-2 rounded-full bg-[#10b981]"></span> RAM {Number(latest.ram).toFixed(0)}%</span>
+                    <span className="flex items-center gap-1 text-[#a855f7]"><span className="w-2 h-2 rounded-full bg-[#a855f7]"></span> GPU {Number(latest.gpu).toFixed(0)}%</span>
+                    <span className="flex items-center gap-1 text-[#f59e0b]"><span className="w-2 h-2 rounded-full bg-[#f59e0b]"></span> VRAM {Number(latest.vram).toFixed(0)}%</span>
                 </div>
             </div>
 
@@ -77,29 +85,35 @@ const SystemTelemetryWidget = ({ status, agentAStatus, agentBStatus }) => {
 
                 <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 w-full h-full overflow-visible">
                     <defs>
-                        <linearGradient id="gradSys" x1="0" x2="0" y1="0" y2="1">
-                            <stop offset="0%" stopColor="#64748b" stopOpacity="0.1" />
-                            <stop offset="100%" stopColor="#64748b" stopOpacity="0" />
-                        </linearGradient>
-                        <linearGradient id="gradA" x1="0" x2="0" y1="0" y2="1">
+                        <linearGradient id="gradCPU" x1="0" x2="0" y1="0" y2="1">
                             <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.15" />
                             <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
                         </linearGradient>
-                        <linearGradient id="gradB" x1="0" x2="0" y1="0" y2="1">
+                        <linearGradient id="gradRAM" x1="0" x2="0" y1="0" y2="1">
                             <stop offset="0%" stopColor="#10b981" stopOpacity="0.15" />
                             <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
+                        </linearGradient>
+                        <linearGradient id="gradGPU" x1="0" x2="0" y1="0" y2="1">
+                            <stop offset="0%" stopColor="#a855f7" stopOpacity="0.15" />
+                            <stop offset="100%" stopColor="#a855f7" stopOpacity="0" />
+                        </linearGradient>
+                        <linearGradient id="gradVRAM" x1="0" x2="0" y1="0" y2="1">
+                            <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.1" />
+                            <stop offset="100%" stopColor="#f59e0b" stopOpacity="0" />
                         </linearGradient>
                     </defs>
 
                     {/* Area fills */}
-                    <polygon points={`0,100 ${toPoints('sys')} 100,100`} fill="url(#gradSys)" />
-                    <polygon points={`0,100 ${toPoints('agA')} 100,100`} fill="url(#gradA)" />
-                    <polygon points={`0,100 ${toPoints('agB')} 100,100`} fill="url(#gradB)" />
+                    <polygon points={`0,100 ${toPoints('cpu')} 100,100`} fill="url(#gradCPU)" />
+                    <polygon points={`0,100 ${toPoints('ram')} 100,100`} fill="url(#gradRAM)" />
+                    <polygon points={`0,100 ${toPoints('gpu')} 100,100`} fill="url(#gradGPU)" />
+                    <polygon points={`0,100 ${toPoints('vram')} 100,100`} fill="url(#gradVRAM)" />
 
                     {/* Line strokes */}
-                    <polyline points={toPoints('sys')} fill="none" stroke="#64748b" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
-                    <polyline points={toPoints('agA')} fill="none" stroke="#3b82f6" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
-                    <polyline points={toPoints('agB')} fill="none" stroke="#10b981" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
+                    <polyline points={toPoints('cpu')} fill="none" stroke="#3b82f6" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
+                    <polyline points={toPoints('ram')} fill="none" stroke="#10b981" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
+                    <polyline points={toPoints('gpu')} fill="none" stroke="#a855f7" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
+                    <polyline points={toPoints('vram')} fill="none" stroke="#f59e0b" strokeWidth="0.75" strokeDasharray="2,2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
             </div>
         </section>
@@ -144,7 +158,9 @@ const DashboardView = () => {
                 const data = await res.json();
                 setConfigModels({
                     agent_a: data.models.agent_a || 'Unconfigured',
-                    agent_b: data.models.agent_b || 'Unconfigured'
+                    agent_b: data.models.agent_b || 'Unconfigured',
+                    agent_a_role: data.models.agent_a_role,
+                    agent_b_role: data.models.agent_b_role
                 });
             } catch (e) {
                 console.error("Failed to fetch config models for dashboard", e);
@@ -192,7 +208,7 @@ const DashboardView = () => {
             {/* Twin Terminals */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <AgentTerminal
-                    agentName="Agent A: Investigator"
+                    agentName={`Agent A: ${configModels.agent_a_role ? configModels.agent_a_role.replace(/_/g, ' ') : 'Investigator'}`}
                     model={state.agent_a_model || configModels.agent_a}
                     status={state.agents.agent_a.status}
                     accentColor="cyan"
@@ -200,7 +216,7 @@ const DashboardView = () => {
                     messages={state.agents.agent_a.messages}
                 />
                 <AgentTerminal
-                    agentName="Agent B: Validator"
+                    agentName={`Agent B: ${configModels.agent_b_role ? configModels.agent_b_role.replace(/_/g, ' ') : 'Validator'}`}
                     model={state.agent_b_model || configModels.agent_b}
                     status={state.agents.agent_b.status}
                     accentColor="purple"
@@ -243,8 +259,6 @@ const DashboardView = () => {
                 {/* Live Task Manager Graph */}
                 <SystemTelemetryWidget
                     status={state.status || 'STANDBY'}
-                    agentAStatus={state.agents?.agent_a?.status}
-                    agentBStatus={state.agents?.agent_b?.status}
                 />
             </div>
 
