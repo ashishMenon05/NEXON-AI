@@ -8,6 +8,7 @@ import asyncio
 import psutil
 from core.agent_runner import AgentRunner
 from utils.logger import logger
+from utils.hardware import check_hardware
 
 router = APIRouter()
 runner = AgentRunner()
