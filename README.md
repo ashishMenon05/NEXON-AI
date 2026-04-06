@@ -226,4 +226,4 @@ ollama pull all-minilm    # Mandatory for semantic similarity scoring
 ---
 
 ## 🤝 Authors
-**Developed by: Ashish Menon** & The NEXON-AI Architecture Team
+**Developed by: Ashish Menon** & Vector
