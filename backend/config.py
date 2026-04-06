@@ -15,7 +15,7 @@ class Settings:
     # AGENTS
     AGENT_A_MODEL = os.getenv("AGENT_A_MODEL", "")
     AGENT_B_MODEL = os.getenv("AGENT_B_MODEL", "")
-    AGENT_A_PROVIDER = os.getenv("AGENT_A_PROVIDER", "ollama") # or "hf"
+    AGENT_A_PROVIDER = os.getenv("AGENT_A_PROVIDER", "ollama")
     AGENT_B_PROVIDER = os.getenv("AGENT_B_PROVIDER", "ollama")
     AGENT_A_ROLE = os.getenv("AGENT_A_ROLE", "INVESTIGATOR")
     AGENT_B_ROLE = os.getenv("AGENT_B_ROLE", "VALIDATOR")
@@ -33,16 +33,10 @@ class Settings:
     SSH_PASSWORD = os.getenv("SSH_PASSWORD", "")
 
     # HUGGINGFACE
-    HF_TOKEN = os.getenv("HF_TOKEN")
-    HF_INFERENCE_URL = os.getenv("HF_INFERENCE_URL", "https://api-inference.huggingface.co/v1")
-    HF_AGENT_A_MODEL = os.getenv("HF_AGENT_A_MODEL", "microsoft/Phi-3-mini-4k-instruct")
-    HF_AGENT_B_MODEL = os.getenv("HF_AGENT_B_MODEL", "Qwen/Qwen2.5-3B-Instruct")
-
-    # COMPETITION
-    API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:11434/v1")
-    MODEL_NAME = os.getenv("MODEL_NAME", "")
     API_KEY = os.getenv("API_KEY", "ollama")
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+    HF_TOKEN = os.getenv("HF_TOKEN", "")
+    HF_INFERENCE_URL = os.getenv("HF_INFERENCE_URL", "https://api-inference.huggingface.co/v1")
 
     # SERVER
     HOST = os.getenv("HOST", "0.0.0.0")
