@@ -129,6 +129,8 @@ const useWebSocket = (url) => {
                 if (data.type === 'reward_update') {
                     draft.reward = data.reward;
                     draft.cumulativeReward = data.cumulative;
+                    draft.rewardBreakdown = data.breakdown || {};
+                    draft.rewardHistory = [...(draft.rewardHistory || []), data.reward];
                 }
 
                 if (data.type === 'episode_end') {

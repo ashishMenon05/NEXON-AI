@@ -200,8 +200,13 @@ const DashboardView = () => {
                     </div>
                     <div className="h-10 w-px bg-outline-variant/20"></div>
                     <div className="text-right">
-                        <p className="text-[10px] font-mono text-slate-500 uppercase tracking-widest">Current Reward</p>
-                        <p className="font-mono text-lg text-tertiary">{Number(state.cumulativeReward).toFixed(2)}</p>
+                        <p className="text-[10px] font-mono text-slate-500 uppercase tracking-widest">Step Reward</p>
+                        <p className="font-mono text-lg text-tertiary">{Number(state.reward || 0).toFixed(3)}</p>
+                    </div>
+                    <div className="h-10 w-px bg-outline-variant/20"></div>
+                    <div className="text-right">
+                        <p className="text-[10px] font-mono text-slate-500 uppercase tracking-widest">Cumulative</p>
+                        <p className="font-mono text-lg text-tertiary">{Number(state.cumulativeReward || 0).toFixed(2)}</p>
                     </div>
                 </div>
             </div>
@@ -225,6 +230,38 @@ const DashboardView = () => {
                     messages={state.agents.agent_b.messages}
                 />
             </div>
+
+            {/* Reward Breakdown Panel */}
+            {state.rewardBreakdown && Object.keys(state.rewardBreakdown).length > 0 && (
+                <section className="bg-surface-container-low/40 backdrop-blur-md rounded-lg p-5 border border-white/5">
+                    <div className="flex items-center gap-2 mb-4">
+                        <span className="material-symbols-outlined text-primary text-sm">analytics</span>
+                        <h3 className="text-xs font-bold font-headline tracking-widest uppercase text-primary">Reward Breakdown</h3>
+                    </div>
+                    <div className="grid grid-cols-4 md:grid-cols-8 gap-3">
+                        {Object.entries(state.rewardBreakdown).map(([key, value]) => (
+                            <div key={key} className="text-center">
+                                <div className="text-[9px] font-mono text-slate-500 uppercase mb-1">{key.replace(/_/g, ' ')}</div>
+                                <div className={`font-mono text-lg font-bold ${value > 0 ? 'text-primary' : 'text-slate-600'}`}>
+                                    {typeof value === 'number' ? value.toFixed(3) : value}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    {state.rewardHistory && state.rewardHistory.length > 1 && (
+                        <div className="mt-4 pt-4 border-t border-white/10">
+                            <div className="text-[9px] font-mono text-slate-500 uppercase mb-2">Reward History</div>
+                            <div className="flex gap-1 items-end h-12">
+                                {state.rewardHistory.slice(-16).map((r, i) => (
+                                    <div key={i} className="flex-1 bg-primary/30 rounded-t" 
+                                         style={{ height: `${Math.max(10, (r / 1) * 100)}%` }}>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </section>
+            )}
 
             {/* Bottom Row */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
