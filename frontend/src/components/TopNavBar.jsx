@@ -5,10 +5,15 @@ const TopNavBar = () => {
     const { sessionData, isConnected, sendCommand } = useApp();
     
     const status = sessionData?.status;
-    const isActive = sessionData?.active;
+    const isActive = sessionData?.active === true;
     const isCompleted = status === 'COMPLETED';
     const isPaused = status === 'PAUSED';
-    const isStandby = status === 'STANDBY' || status === 'READY' || !status;
+    const isReady = status === 'READY' || status === 'STANDBY' || !status;
+    
+    const handleStart = () => sendCommand({ action: 'start' });
+    const handlePause = () => sendCommand({ action: 'pause' });
+    const handleReset = () => sendCommand({ action: 'reset' });
+    const handleForceEnd = () => sendCommand({ action: 'force_end' });
     
     return (
         <header className="fixed top-0 w-full z-50 flex justify-between items-center px-6 h-16 bg-surface/60 backdrop-blur-xl border-b border-primary/10 shadow-[0_0_40px_rgba(0,212,255,0.04)]">
@@ -23,28 +28,28 @@ const TopNavBar = () => {
 
             <div className="flex items-center gap-6">
                 <div className="flex gap-2">
-                    {/* STANDBY/READY state - only show START */}
-                    {isStandby && (
+                    {/* READY/STANDBY state - only show START */}
+                    {isReady && !isActive && !isCompleted && (
                         <button
-                            onClick={() => sendCommand({ action: 'start' })}
+                            onClick={handleStart}
                             className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-tertiary/10 border border-tertiary/20 text-tertiary text-xs font-bold hover:bg-tertiary/20 transition-all active:scale-95"
                         >
                             <span className="material-symbols-outlined text-sm">play_arrow</span> START
                         </button>
                     )}
 
-                    {/* ACTIVE state - show PAUSE and FORCE END */}
+                    {/* ACTIVE and NOT completed - show PAUSE/RESUME and FORCE END */}
                     {isActive && !isCompleted && (
                         <>
                             <button
-                                onClick={() => sendCommand({ action: 'pause' })}
+                                onClick={handlePause}
                                 className={`flex items-center gap-2 px-4 py-1.5 rounded-full border text-xs font-bold transition-all active:scale-95 ${isPaused ? 'bg-secondary text-surface border-secondary' : 'bg-secondary/10 border-secondary/20 text-secondary hover:bg-secondary/20'}`}
                             >
                                 <span className="material-symbols-outlined text-sm">{isPaused ? 'play_arrow' : 'pause'}</span>
                                 {isPaused ? 'RESUME' : 'PAUSE'}
                             </button>
                             <button
-                                onClick={() => sendCommand({ action: 'force_end' })}
+                                onClick={handleForceEnd}
                                 className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#f59e0b]/10 border border-[#f59e0b]/20 text-[#f59e0b] text-xs font-bold hover:bg-[#f59e0b]/20 transition-all active:scale-95"
                             >
                                 <span className="material-symbols-outlined text-sm">stop_circle</span> FORCE END
@@ -54,7 +59,7 @@ const TopNavBar = () => {
 
                     {/* Always show RESET */}
                     <button
-                        onClick={() => sendCommand({ action: 'reset' })}
+                        onClick={handleReset}
                         className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-error/10 border border-error/20 text-error text-xs font-bold hover:bg-error/20 transition-all active:scale-95"
                     >
                         <span className="material-symbols-outlined text-sm">restart_alt</span> RESET
