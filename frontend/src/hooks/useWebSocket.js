@@ -64,9 +64,10 @@ const useWebSocket = (url) => {
                 if (data.type === 'agent_partial') {
                     const agentId = data.agent_id;
                     const agents = { ...newState.agents };
-                    const agent = { ...agents[agentId] };
-                    if (agent) {
-                        const messages = [...agent.messages];
+                    const agentReference = agents[agentId];
+                    if (agentReference) {
+                        const agent = { ...agentReference };
+                        const messages = [...(agent.messages || [])];
                         const lastMsg = messages[messages.length - 1];
                         if (lastMsg && lastMsg.type === 'message' && lastMsg.partial) {
                             messages[messages.length - 1] = { ...lastMsg, content: data.full_message };
@@ -86,9 +87,10 @@ const useWebSocket = (url) => {
                 if (data.type === 'agent_message') {
                     const agentId = data.agent_id;
                     const agents = { ...newState.agents };
-                    const agent = { ...agents[agentId] };
-                    if (agent) {
-                        const messages = [...agent.messages];
+                    const agentReference = agents[agentId];
+                    if (agentReference) {
+                        const agent = { ...agentReference };
+                        const messages = [...(agent.messages || [])];
                         const lastMsg = messages[messages.length - 1];
                         if (lastMsg && lastMsg.partial) {
                             messages[messages.length - 1] = { ...lastMsg, content: data.message, partial: undefined };
@@ -127,9 +129,9 @@ const useWebSocket = (url) => {
 
                 if (data.type === 'tool_call') {
                     const agentId = data.agent_id;
-                    if (newState.agents[agentId]) {
-                        const agents = { ...newState.agents };
-                        const agent = { ...agents[agentId], messages: [...agents[agentId].messages] };
+                    const agents = { ...newState.agents };
+                    if (agents[agentId]) {
+                        const agent = { ...agents[agentId], messages: [...(agents[agentId].messages || [])] };
                         agent.messages.push({
                             type: 'tool_call',
                             tool_name: data.tool_name,
@@ -142,15 +144,18 @@ const useWebSocket = (url) => {
 
                 if (data.type === 'tool_result') {
                     const agents = { ...newState.agents };
-                    const agentA = { ...agents.agent_a, messages: [...agents.agent_a.messages] };
-                    agentA.messages.push({
-                        type: 'tool_result',
-                        tool_name: data.tool_name,
-                        result: data.result,
-                        success: data.success
-                    });
-                    agents.agent_a = agentA;
-                    newState.agents = agents;
+                    const agentAReference = agents.agent_a;
+                    if (agentAReference) {
+                        const agentA = { ...agentAReference, messages: [...(agentAReference.messages || [])] };
+                        agentA.messages.push({
+                            type: 'tool_result',
+                            tool_name: data.tool_name,
+                            result: data.result,
+                            success: data.success
+                        });
+                        agents.agent_a = agentA;
+                        newState.agents = agents;
+                    }
 
                     // Simple heuristic for clues if not sent explicitly
                     const res = data.result?.toLowerCase() || '';
