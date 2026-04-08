@@ -14,7 +14,14 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "backend"))
 
 from dotenv import load_dotenv
-load_dotenv(ROOT / "default.env")
+
+if (ROOT / ".env").exists():
+    load_dotenv(ROOT / ".env", override=True)
+elif (ROOT / "backend" / ".env").exists():
+    load_dotenv(ROOT / "backend" / ".env", override=True)
+    
+# Fallback for defaults, will NOT override the .env we just loaded
+load_dotenv(ROOT / "default.env", override=False)
 
 API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
 MODEL_NAME = os.getenv("MODEL_NAME", "meta-llama/Llama-3.1-8B-Instruct")
