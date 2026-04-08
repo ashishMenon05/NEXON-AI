@@ -20,8 +20,14 @@ API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
 MODEL_NAME = os.getenv("MODEL_NAME", "meta-llama/Llama-3.1-8B-Instruct")
 HF_TOKEN = os.getenv("HF_TOKEN")
 
+# Fallbacks to ensure os.environ has the keys before we strictly read them
+if "API_BASE_URL" not in os.environ:
+    os.environ["API_BASE_URL"] = API_BASE_URL
+if "API_KEY" not in os.environ:
+    os.environ["API_KEY"] = HF_TOKEN or "none"
+
 from openai import OpenAI
-client = OpenAI(base_url=API_BASE_URL, api_key=os.getenv("API_KEY", HF_TOKEN or "none"))
+client = OpenAI(base_url=os.environ["API_BASE_URL"], api_key=os.environ["API_KEY"])
 
 from backend.core.environment import NexusEnvironment
 from backend.api.schemas.action import NexusAction, ToolCall
