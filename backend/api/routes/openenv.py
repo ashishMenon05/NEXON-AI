@@ -22,7 +22,9 @@ async def simulation_loop():
         
     step_num = 1
     done = False
-    active_agent = "agent_a"
+    from config import settings
+    agent_list = getattr(settings, "AGENTS", [])
+    active_agent = agent_list[0]["id"] if agent_list else "agent_a"
     
     while not done:
         # Check if the episode was reset/cancelled
