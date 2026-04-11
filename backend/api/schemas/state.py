@@ -8,8 +8,7 @@ class NexusState(BaseModel):
     difficulty: str
     current_round: int
     max_rounds: int
-    agent_a_messages: List[str]
-    agent_b_messages: List[str]
+    messages_by_agent: Dict[str, List[str]]
     tool_calls_made: List[Dict]
     clues_found: List[str]
     root_cause_found: bool

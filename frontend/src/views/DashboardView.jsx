@@ -141,16 +141,15 @@ const DashboardView = () => {
         active: false,
         step: 0,
         cumulativeReward: 0,
-        agents: {
-            agent_a: { status: 'STANDBY', messages: [] },
-            agent_b: { status: 'STANDBY', messages: [] }
+        messages_by_agent: {
+            agent_a: []
         }
     };
 
     const sc = state.scenario || {};
 
     const [isOverlayDismissed, setIsOverlayDismissed] = useState(false);
-    const [configModels, setConfigModels] = useState({ agent_a: 'Loading...', agent_b: 'Loading...' });
+    const [configModels, setConfigModels] = useState({ agents: [] });
 
     useEffect(() => {
         const fetchConfig = async () => {
@@ -158,10 +157,8 @@ const DashboardView = () => {
                 const res = await fetch(`${config.API_BASE}/config`);
                 const data = await res.json();
                 setConfigModels({
-                    agent_a: data.models.agent_a || 'Unconfigured',
-                    agent_b: data.models.agent_b || 'Unconfigured',
-                    agent_a_role: data.models.agent_a_role,
-                    agent_b_role: data.models.agent_b_role
+                    agents: data.models?.agents || [],
+                    execMode: data.execution?.mode
                 });
             } catch (e) {
                 console.error("Failed to fetch config models for dashboard", e);
@@ -181,7 +178,17 @@ const DashboardView = () => {
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-end gap-6 border-b border-outline-variant/10 pb-6">
                 <div>
-                    <h1 className="text-4xl font-headline font-bold tracking-tight text-on-surface uppercase">Operational_Dashboard</h1>
+                    <h1 className="text-4xl font-headline font-bold tracking-tight text-on-surface uppercase flex items-center gap-3">
+                        Operational_Dashboard
+                        {configModels.execMode === 'ssh' && (
+                            <span 
+                                className="text-[10px] bg-error/20 text-error px-2 py-1 rounded border border-error/50 tracking-widest uppercase cursor-help hover:bg-error/30 transition-all font-mono"
+                                title="WARNING: Attached to a live SSH environment. Agents execute commands that modify system state directly."
+                            >
+                                SSH_LIVE
+                            </span>
+                        )}
+                    </h1>
                     <p className={`font-mono text-sm mt-2 opacity-80 ${isConnected ? 'text-primary' : 'text-error'}`}>
                         {isConnected ? `CONNECTED_TO: ${config.WS_URL}` : 'DISCONNECTED: Backend server offline or starting...'}
                     </p>
@@ -211,24 +218,29 @@ const DashboardView = () => {
                 </div>
             </div>
 
-            {/* Twin Terminals */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <AgentTerminal
-                    agentName={`Agent A: ${configModels.agent_a_role ? configModels.agent_a_role.replace(/_/g, ' ') : 'Investigator'}`}
-                    model={state.agent_a_model || configModels.agent_a}
-                    status={state.agents.agent_a.status}
-                    accentColor="cyan"
-                    icon="search"
-                    messages={state.agents.agent_a.messages}
-                />
-                <AgentTerminal
-                    agentName={`Agent B: ${configModels.agent_b_role ? configModels.agent_b_role.replace(/_/g, ' ') : 'Validator'}`}
-                    model={state.agent_b_model || configModels.agent_b}
-                    status={state.agents.agent_b.status}
-                    accentColor="purple"
-                    icon="verified_user"
-                    messages={state.agents.agent_b.messages}
-                />
+            {/* N-Agent Terminals */}
+            <div className={`grid grid-cols-1 ${configModels.agents.length > 2 ? 'lg:grid-cols-3' : 'lg:grid-cols-2'} gap-6`}>
+                {configModels.agents.map((agent, index) => {
+                    const isPrimary = index % 2 === 0;
+                    const accentColor = isPrimary ? 'cyan' : 'purple';
+                    // We don't have agent specific status tracked deeply beyond STANDBY/ACTIVE globally right now
+                    // We deduce messages from state.messages_by_agent
+                    const messages = state.messages_by_agent?.[agent.id] || [];
+                    const agentStatus = state.active ? 'ACTIVE' : 'STANDBY';
+                    const icon = agent.role.includes('VALIDATOR') ? 'verified_user' : 'search';
+
+                    return (
+                        <AgentTerminal
+                            key={agent.id}
+                            agentName={`Agent ${String.fromCharCode(65 + index)}: ${agent.role.replace(/_/g, ' ')}`}
+                            model={agent.model}
+                            status={agentStatus}
+                            accentColor={accentColor}
+                            icon={icon}
+                            messages={messages}
+                        />
+                    );
+                })}
             </div>
 
             {/* Reward Breakdown Panel */}

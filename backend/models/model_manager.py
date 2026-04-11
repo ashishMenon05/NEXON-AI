@@ -17,41 +17,37 @@ class ModelManager:
             self.hf_client = HFClient(settings.HF_INFERENCE_URL, hf_token)
             
     def get_client(self, agent_id: str) -> Tuple[AsyncOpenAI, str]:
+        agent_config = next((a for a in settings.AGENTS if a["id"] == agent_id), None)
+        if not agent_config:
+            # Fallback for unrecognized agent
+            agent_config = settings.AGENTS[0] if settings.AGENTS else {"provider": "ollama", "model": "llama3"}
+            
+        provider = agent_config.get("provider", "ollama")
+        model_name = os.environ.get("MODEL_NAME", "") or agent_config.get("model", "")
+        
         api_base = os.environ.get("API_BASE_URL", "")
         api_key = os.environ.get("API_KEY", "")
-        if api_base and api_key:
+        if api_base and api_key and provider != "openai":
             client = AsyncOpenAI(
                 base_url=api_base,
                 api_key=api_key
             )
-            model_name = os.environ.get("MODEL_NAME", "")
-            if agent_id == "agent_a":
-                model_name = model_name or settings.AGENT_A_MODEL
-            else:
-                model_name = model_name or settings.AGENT_B_MODEL
             return client, model_name
 
         hf_token = os.environ.get("HF_TOKEN", "") or settings.HF_TOKEN or ""
-        openai_key = os.environ.get("OPENAI_API_KEY", "") or settings.OPENAI_API_KEY or ""
+        openai_key = os.environ.get("OPENAI_API_KEY", "") or getattr(settings, "OPENAI_API_KEY", "")
 
         if settings.CUSTOM_MODEL_ENABLED:
-            if settings.CUSTOM_MODEL_AGENT.lower() in (agent_id.lower(), "both"):
+            if settings.CUSTOM_MODEL_AGENT.lower() in (agent_id.lower(), "both", "all"):
                 client = AsyncOpenAI(
                     base_url=settings.CUSTOM_MODEL_BASE_URL,
                     api_key=settings.CUSTOM_MODEL_API_KEY or "none"
                 )
                 return client, settings.CUSTOM_MODEL_NAME
-                
-        if agent_id == "agent_a":
-            provider = settings.AGENT_A_PROVIDER
-            model_name = os.environ.get("MODEL_NAME", "") or settings.AGENT_A_MODEL
-        else:
-            provider = settings.AGENT_B_PROVIDER
-            model_name = os.environ.get("MODEL_NAME", "") or settings.AGENT_B_MODEL
         
         # Priority: OpenAI > HuggingFace > Ollama
         if provider == "openai" and openai_key:
-            client = AsyncOpenAI(api_key=openai_key, base_url=settings.OPENAI_BASE_URL)
+            client = AsyncOpenAI(api_key=openai_key, base_url=getattr(settings, "OPENAI_BASE_URL", "https://api.openai.com/v1"))
             return client, model_name
             
         if provider == "hf" or not self._is_ollama_available():
@@ -61,7 +57,7 @@ class ModelManager:
                 temp_client = HFClient(settings.HF_INFERENCE_URL, hf_token)
                 return temp_client.get_client(), model_name
                 
-        if provider == "openrouter" and settings.OPENROUTER_API_KEY:
+        if provider == "openrouter" and getattr(settings, "OPENROUTER_API_KEY", ""):
             client = AsyncOpenAI(api_key=settings.OPENROUTER_API_KEY, base_url=settings.OPENROUTER_BASE_URL)
             return client, model_name
         

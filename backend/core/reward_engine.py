@@ -127,7 +127,6 @@ def compute_reward(message: str, tool_calls: list, tool_results: list, episode_s
         penalty += 0.12
 
     # Wrong domain: confidently blaming the wrong service
-    # Check if agent blames a red-herring service mentioned in scenario
     red_herrings = sc.get("red_herrings", [])
     if red_herrings:
         for rh in red_herrings:
@@ -135,6 +134,28 @@ def compute_reward(message: str, tool_calls: list, tool_results: list, episode_s
             if rh_lower in msg_lower and "not" not in msg_lower:
                 penalty += 0.05  # Fell for the red herring
                 break
+
+    # Invalid Tool Penalty
+    for tr in tool_results:
+        res_str = str(tr.get("result", "") if isinstance(tr, dict) else tr)
+        if "Error: Tool" in res_str and "not found" in res_str:
+            penalty += 0.10
+        elif "Error executing tool" in res_str or "Critical Error" in res_str:
+            # Add penalty for bad parameters
+            penalty += 0.05
+
+    # Tool Spamming Penalty (Calling the same tool repeatedly with no state change)
+    if tool_calls:
+        for t in tool_calls:
+            sig = f"{t.tool_name}:{str(t.params)}"
+            # If they called this exact same tool previously and it was an error or they just keep calling it
+            if ep.previous_tool_calls.count(sig) > 2:
+                penalty += 0.05
+
+    # Unverified Proposal Penalty
+    has_submit = any(t.tool_name == "submit_resolution" for t in tool_calls)
+    if has_submit and not getattr(ep, "fix_verified", False):
+        penalty += 0.15 # Attempting to end investigation without a proven fix
 
     total = sum(breakdown.values()) - penalty
     final_score = round(max(0.0, min(1.0, total)), 4)

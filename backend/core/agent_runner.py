@@ -81,12 +81,9 @@ class AgentRunner:
         is_ssh = settings.EXECUTION_MODE == "ssh"
         tool_rules = TOOL_INSTRUCTIONS_SSH if is_ssh else TOOL_INSTRUCTIONS_SIMULATED
         
-        if agent_id == "agent_a":
-            role = settings.AGENT_A_ROLE
-            custom_prompt = settings.AGENT_A_SYSTEM_PROMPT
-        else:
-            role = settings.AGENT_B_ROLE
-            custom_prompt = settings.AGENT_B_SYSTEM_PROMPT
+        agent_config = next((a for a in settings.AGENTS if a["id"] == agent_id), {})
+        role = agent_config.get("role", "INVESTIGATOR")
+        custom_prompt = agent_config.get("system_prompt", "")
 
         if role.startswith("CUSTOM_") and custom_prompt:
             sys_prompt = custom_prompt + "\n\n" + tool_rules

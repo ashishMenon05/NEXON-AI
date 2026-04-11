@@ -72,7 +72,12 @@ async def simulation_loop():
             logger.error(f"Error in simulation loop at step {step_num}: {e}")
             break
             
-        active_agent = "agent_b" if active_agent == "agent_a" else "agent_a"
+        from config import settings
+        agent_list = settings.AGENTS if settings.AGENTS else [{"id": "agent_a"}]
+        current_idx = next((i for i, a in enumerate(agent_list) if a["id"] == active_agent), 0)
+        next_idx = (current_idx + 1) % len(agent_list)
+        active_agent = agent_list[next_idx]["id"]
+        
         step_num += 1
         await asyncio.sleep(1)
     
@@ -114,8 +119,7 @@ async def start_simulation():
             "scenario": sc_safe,
             "task": episode_manager.env.active_episode.task,
             "difficulty": episode_manager.env.active_episode.difficulty,
-            "agent_a_model": settings.AGENT_A_MODEL,
-            "agent_b_model": settings.AGENT_B_MODEL
+            "agents": settings.AGENTS
         })
         
     episode_manager.simulation_task = asyncio.create_task(simulation_loop())

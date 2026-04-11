@@ -20,19 +20,31 @@ class Settings:
     OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1")
     OLLAMA_API_KEY = os.getenv("OLLAMA_API_KEY", "ollama")
 
-    # AGENTS
-    AGENT_A_MODEL = os.getenv("AGENT_A_MODEL", "")
-    AGENT_B_MODEL = os.getenv("AGENT_B_MODEL", "")
-    AGENT_A_PROVIDER = os.getenv("AGENT_A_PROVIDER", "ollama")
-    AGENT_B_PROVIDER = os.getenv("AGENT_B_PROVIDER", "ollama")
-    AGENT_A_ROLE = os.getenv("AGENT_A_ROLE", "INVESTIGATOR")
-    AGENT_B_ROLE = os.getenv("AGENT_B_ROLE", "VALIDATOR")
-    AGENT_A_SYSTEM_PROMPT = os.getenv("AGENT_A_SYSTEM_PROMPT", "")
-    AGENT_B_SYSTEM_PROMPT = os.getenv("AGENT_B_SYSTEM_PROMPT", "")
-    AGENT_A_TEMPERATURE = float(os.getenv("AGENT_A_TEMPERATURE", "0.8"))
-    AGENT_B_TEMPERATURE = float(os.getenv("AGENT_B_TEMPERATURE", "0.6"))
-    AGENT_A_MAX_TOKENS = int(os.getenv("AGENT_A_MAX_TOKENS", "300"))
-    AGENT_B_MAX_TOKENS = int(os.getenv("AGENT_B_MAX_TOKENS", "300"))
+    # AGENTS (Dynamic N-Agent Support)
+    import json
+    _default_agents = [
+        {
+            "id": "agent_a",
+            "model": os.getenv("AGENT_A_MODEL", ""),
+            "provider": os.getenv("AGENT_A_PROVIDER", "ollama"),
+            "role": os.getenv("AGENT_A_ROLE", "INVESTIGATOR"),
+            "system_prompt": os.getenv("AGENT_A_SYSTEM_PROMPT", ""),
+            "temperature": float(os.getenv("AGENT_A_TEMPERATURE", "0.8"))
+        },
+        {
+            "id": "agent_b",
+            "model": os.getenv("AGENT_B_MODEL", ""),
+            "provider": os.getenv("AGENT_B_PROVIDER", "ollama"),
+            "role": os.getenv("AGENT_B_ROLE", "VALIDATOR"),
+            "system_prompt": os.getenv("AGENT_B_SYSTEM_PROMPT", ""),
+            "temperature": float(os.getenv("AGENT_B_TEMPERATURE", "0.6"))
+        }
+    ]
+    try:
+        AGENTS_JSON = os.getenv("AGENTS_JSON")
+        AGENTS = json.loads(AGENTS_JSON) if AGENTS_JSON else _default_agents
+    except:
+        AGENTS = _default_agents
     # EXECUTION ENVIRONMENT
     EXECUTION_MODE = os.getenv("EXECUTION_MODE", "simulated")
     SSH_HOST = os.getenv("SSH_HOST", "")

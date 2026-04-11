@@ -11,8 +11,8 @@ class EpisodeState:
         self.current_round = 1
         self.max_rounds = max_rounds
         
-        self.agent_a_messages: List[str] = []
-        self.agent_b_messages: List[str] = []
+        from config import settings
+        self.messages_by_agent: Dict[str, List[str]] = {a["id"]: [] for a in settings.AGENTS}
         self.all_messages: List[str] = []
         
         self.tool_calls_made: List[Dict] = []
@@ -39,11 +39,15 @@ class EpisodeState:
     def add_message(self, agent_id: str, message: str):
         self.steps_taken += 1
         self.all_messages.append(message)
-        if agent_id == "agent_a":
-            self.agent_a_messages.append(message)
-        else:
-            self.agent_b_messages.append(message)
-            self.current_round += 1  # A full round is both agents speaking
+        if agent_id not in self.messages_by_agent:
+            self.messages_by_agent[agent_id] = []
+        self.messages_by_agent[agent_id].append(message)
+        
+        from config import settings
+        # A full round is defined as all agents having spoken at least once in the current sequence
+        # We can approximate this by incrementing round when the last agent in the list speaks
+        if settings.AGENTS and agent_id == settings.AGENTS[-1]["id"]:
+            self.current_round += 1
             
         self.last_partner_message = message
         
@@ -64,8 +68,7 @@ class EpisodeState:
             difficulty=self.difficulty,
             current_round=self.current_round,
             max_rounds=self.max_rounds,
-            agent_a_messages=self.agent_a_messages,
-            agent_b_messages=self.agent_b_messages,
+            messages_by_agent=self.messages_by_agent,
             tool_calls_made=self.tool_calls_made,
             clues_found=self.clues_found,
             root_cause_found=self.root_cause_found,

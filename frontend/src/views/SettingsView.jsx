@@ -164,8 +164,7 @@ const HFModelPicker = ({ value, onChange, accentColor }) => {
 const ROLES = ["INVESTIGATOR", "VALIDATOR", "FORENSIC_ANALYST", "NETWORK_ENGINEER", "SYSTEM_ADMIN", "SECURITY_ARCHITECT", "COMPLIANCE_OFFICER", "CUSTOM_ROLE"];
 
 const SettingsView = () => {
-    const [agentA, setAgentA] = useState({ provider: 'hf', model: '', hfModel: 'meta-llama/Llama-3.1-8B-Instruct', openaiModel: 'gpt-4o', temp: 0.7, role: 'INVESTIGATOR', customRoleName: '', customPrompt: '' });
-    const [agentB, setAgentB] = useState({ provider: 'hf', model: '', hfModel: 'meta-llama/Llama-3.2-1B-Instruct', openaiModel: 'gpt-4o-mini', temp: 0.5, role: 'VALIDATOR', customRoleName: '', customPrompt: '' });
+    const [agents, setAgents] = useState([]);
     const [openaiKey, setOpenaiKey] = useState('');
     const [maxSteps, setMaxSteps] = useState(12);
     const [complexity, setComplexity] = useState('LEVEL_02: ADVERSARIAL');
@@ -179,35 +178,23 @@ const SettingsView = () => {
             try {
                 const res = await fetch(`${config.API_BASE}/config`);
                 const data = await res.json();
-                const roleA = data.models.agent_a_role || 'INVESTIGATOR';
-                const roleB = data.models.agent_b_role || 'VALIDATOR';
-                setAgentA({
-                    provider: data.models.agent_a_provider || 'hf',
-                    model: data.models.agent_a,
-                    hfModel: data.models.agent_a?.includes('/') ? data.models.agent_a : 'meta-llama/Llama-3.1-8B-Instruct',
-                    temp: data.models.agent_a_temp,
-                    role: roleA.startsWith('CUSTOM_') ? 'CUSTOM_ROLE' : roleA,
-                    customRoleName: roleA.startsWith('CUSTOM_') ? roleA.replace('CUSTOM_', '').replace(/_/g, ' ') : '',
-                    customPrompt: data.models.agent_a_system_prompt || ''
-                });
-                setAgentB({
-                    provider: data.models.agent_b_provider || 'hf',
-                    model: data.models.agent_b,
-                    hfModel: data.models.agent_b?.includes('/') ? data.models.agent_b : 'meta-llama/Llama-3.2-1B-Instruct',
-                    temp: data.models.agent_b_temp,
-                    role: roleB.startsWith('CUSTOM_') ? 'CUSTOM_ROLE' : roleB,
-                    customRoleName: roleB.startsWith('CUSTOM_') ? roleB.replace('CUSTOM_', '').replace(/_/g, ' ') : '',
-                    customPrompt: data.models.agent_b_system_prompt || ''
-                });
-                setAgentB({
-                    provider: data.models.agent_b_provider || 'ollama',
-                    model: data.models.agent_b,
-                    hfModel: 'Qwen/Qwen2.5-3B-Instruct',
-                    temp: data.models.agent_b_temp,
-                    role: roleB.startsWith('CUSTOM_') ? 'CUSTOM_ROLE' : roleB,
-                    customRoleName: roleB.startsWith('CUSTOM_') ? roleB.replace('CUSTOM_', '').replace(/_/g, ' ') : '',
-                    customPrompt: data.models.agent_b_system_prompt || ''
-                });
+                if (data.models && data.models.agents) {
+                    setAgents(data.models.agents.map(a => ({
+                        id: a.id,
+                        provider: a.provider || 'hf',
+                        model: a.model,
+                        hfModel: (a.provider === 'hf' && a.model?.includes('/')) ? a.model : 'meta-llama/Llama-3.1-8B-Instruct',
+                        openaiModel: a.provider === 'openai' ? a.model : 'gpt-4o-mini',
+                        temp: a.temperature || 0.7,
+                        role: a.role?.startsWith('CUSTOM_') ? 'CUSTOM_ROLE' : a.role || 'INVESTIGATOR',
+                        customRoleName: a.role?.startsWith('CUSTOM_') ? a.role.replace('CUSTOM_', '').replace(/_/g, ' ') : '',
+                        customPrompt: a.system_prompt || ''
+                    })));
+                } else {
+                    setAgents([{
+                        id: 'agent_a', provider: 'hf', model: '', hfModel: 'meta-llama/Llama-3.1-8B-Instruct', openaiModel: 'gpt-4o', temp: 0.7, role: 'INVESTIGATOR', customRoleName: '', customPrompt: ''
+                    }]);
+                }
                 if (data.models.openai_api_key) setOpenaiKey(data.models.openai_api_key);
                 setMaxSteps(data.episode.max_steps);
                 if (data.execution) {
@@ -226,23 +213,21 @@ const SettingsView = () => {
         fetchConfig();
     }, []);
 
-    const handleSave = async () => {
         try {
+            const agentPayload = agents.map(a => ({
+                id: a.id,
+                model: a.provider === 'ollama' ? a.model : (a.provider === 'openai' ? a.openaiModel : a.hfModel),
+                provider: a.provider,
+                role: a.role === 'CUSTOM_ROLE' ? `CUSTOM_${a.customRoleName.replace(/ /g, '_').toUpperCase()}` : a.role,
+                system_prompt: a.customPrompt,
+                temperature: a.temp
+            }));
             await fetch(`${config.API_BASE}/config`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     MAX_STEPS: maxSteps,
-                    AGENT_A_MODEL: agentA.provider === 'ollama' ? agentA.model : (agentA.provider === 'openai' ? agentA.openaiModel : agentA.hfModel),
-                    AGENT_B_MODEL: agentB.provider === 'ollama' ? agentB.model : (agentB.provider === 'openai' ? agentB.openaiModel : agentB.hfModel),
-                    AGENT_A_PROVIDER: agentA.provider,
-                    AGENT_B_PROVIDER: agentB.provider,
-                    AGENT_A_ROLE: agentA.role === 'CUSTOM_ROLE' ? `CUSTOM_${agentA.customRoleName.replace(/ /g, '_').toUpperCase()}` : agentA.role,
-                    AGENT_B_ROLE: agentB.role === 'CUSTOM_ROLE' ? `CUSTOM_${agentB.customRoleName.replace(/ /g, '_').toUpperCase()}` : agentB.role,
-                    AGENT_A_SYSTEM_PROMPT: agentA.customPrompt,
-                    AGENT_B_SYSTEM_PROMPT: agentB.customPrompt,
-                    AGENT_A_TEMPERATURE: agentA.temp,
-                    AGENT_B_TEMPERATURE: agentB.temp,
+                    AGENTS: agentPayload,
                     EXECUTION_MODE: executionMode,
                     SSH_HOST: sshConfig.host,
                     SSH_PORT: sshConfig.port,
@@ -258,24 +243,22 @@ const SettingsView = () => {
         }
     };
 
-    // Auto-sync active settings so navigation doesn't wipe them
     useEffect(() => {
-        if (!agentA.model && !agentB.model) return; // Wait for initial load or valid models
+        if (agents.length === 0) return;
+        const agentPayload = agents.map(a => ({
+            id: a.id,
+            model: a.provider === 'ollama' ? a.model : (a.provider === 'openai' ? a.openaiModel : a.hfModel),
+            provider: a.provider,
+            role: a.role === 'CUSTOM_ROLE' ? `CUSTOM_${a.customRoleName.replace(/ /g, '_').toUpperCase()}` : a.role,
+            system_prompt: a.customPrompt,
+            temperature: a.temp
+        }));
         fetch(`${config.API_BASE}/config`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 MAX_STEPS: maxSteps,
-                AGENT_A_MODEL: agentA.provider === 'ollama' ? agentA.model : (agentA.provider === 'openai' ? agentA.openaiModel : agentA.hfModel),
-                AGENT_B_MODEL: agentB.provider === 'ollama' ? agentB.model : (agentB.provider === 'openai' ? agentB.openaiModel : agentB.hfModel),
-                AGENT_A_PROVIDER: agentA.provider,
-                AGENT_B_PROVIDER: agentB.provider,
-                AGENT_A_ROLE: agentA.role === 'CUSTOM_ROLE' ? `CUSTOM_${agentA.customRoleName.replace(/ /g, '_').toUpperCase()}` : agentA.role,
-                AGENT_B_ROLE: agentB.role === 'CUSTOM_ROLE' ? `CUSTOM_${agentB.customRoleName.replace(/ /g, '_').toUpperCase()}` : agentB.role,
-                AGENT_A_SYSTEM_PROMPT: agentA.customPrompt,
-                AGENT_B_SYSTEM_PROMPT: agentB.customPrompt,
-                AGENT_A_TEMPERATURE: agentA.temp,
-                AGENT_B_TEMPERATURE: agentB.temp,
+                AGENTS: agentPayload,
                 EXECUTION_MODE: executionMode,
                 SSH_HOST: sshConfig.host,
                 SSH_PORT: sshConfig.port,
@@ -284,15 +267,36 @@ const SettingsView = () => {
                 OPENAI_API_KEY: openaiKey
             })
         }).catch(e => { });
-    }, [agentA, agentB, maxSteps, executionMode, sshConfig, openaiKey]);
+    }, [agents, maxSteps, executionMode, sshConfig, openaiKey]);
 
-    const ProviderToggle = ({ agent, agentId, onSetAgent }) => (
+    const handleUpdateAgent = (index, updater) => {
+        setAgents(prev => {
+            const next = [...prev];
+            next[index] = typeof updater === 'function' ? updater(next[index]) : updater;
+            return next;
+        });
+    };
+
+    const addAgent = () => {
+        if (agents.length >= 4) return;
+        const newId = `agent_${String.fromCharCode(97 + agents.length)}`;
+        setAgents(prev => [...prev, {
+            id: newId, provider: 'hf', model: '', hfModel: 'meta-llama/Llama-3.2-1B-Instruct', openaiModel: 'gpt-4o-mini', temp: 0.5, role: 'INVESTIGATOR', customRoleName: '', customPrompt: ''
+        }]);
+    };
+
+    const removeAgent = (index) => {
+        if (agents.length <= 1) return;
+        setAgents(prev => prev.filter((_, i) => i !== index).map((a, i) => ({ ...a, id: `agent_${String.fromCharCode(97 + i)}` })));
+    };
+
+    const ProviderToggle = ({ agent, index }) => (
         <div className="flex gap-2 p-1 bg-surface-container-highest rounded-lg border border-white/5">
             {['ollama', 'hf', 'openai'].map(p => (
                 <button
                     key={p}
-                    onClick={() => onSetAgent(a => ({ ...a, provider: p }))}
-                    className={`flex-1 py-1 px-3 rounded text-[10px] font-mono font-bold uppercase transition-all ${agent.provider === p ? (agentId === 'A' ? 'bg-primary text-black' : 'bg-secondary text-black') : 'text-outline-variant hover:text-white'}`}
+                    onClick={() => handleUpdateAgent(index, a => ({ ...a, provider: p }))}
+                    className={`flex-1 py-1 px-3 rounded text-[10px] font-mono font-bold uppercase transition-all ${agent.provider === p ? (index % 2 === 0 ? 'bg-primary text-black' : 'bg-secondary text-black') : 'text-outline-variant hover:text-white'}`}
                 >
                     {p === 'ollama' ? 'Local Ollama' : (p === 'hf' ? 'Hugging Face' : 'OpenAI')}
                 </button>
@@ -318,213 +322,134 @@ const SettingsView = () => {
             </section>
 
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-stretch">
-                {/* Agent A Config */}
-                <div className="md:col-span-6 glass-panel rounded-xl p-8 relative overflow-hidden group refractive-edge h-full">
-                    <div className="flex items-center gap-4 mb-8">
-                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20">
-                            <span className="material-symbols-outlined text-primary">smart_toy</span>
-                        </div>
-                        <div className="flex-1">
-                            <div className="flex justify-between items-start">
-                                <div>
-                                    <h3 className="font-headline text-xl font-bold uppercase">Agent A <span className="text-primary text-sm ml-2 tracking-tighter">[PRIMARY]</span></h3>
-                                    <p className="font-mono text-[10px] text-slate-500 uppercase">Neural Processing Unit 01</p>
-                                </div>
-                                <ProviderToggle agent={agentA} agentId="A" onSetAgent={setAgentA} />
-                            </div>
-                        </div>
-                    </div>
-                    <div className="space-y-8">
-                        {agentA.provider === 'ollama' ? (
-                            <OllamaModelPicker
-                                value={agentA.model}
-                                onChange={v => setAgentA(a => ({ ...a, model: v }))}
-                                accentColor="primary"
-                            />
-                        ) : agentA.provider === 'hf' ? (
-                            <HFModelPicker
-                                value={agentA.hfModel}
-                                onChange={v => setAgentA(a => ({ ...a, hfModel: v }))}
-                                accentColor="primary"
-                            />
-                        ) : (
-                            <div className="space-y-4">
-                                <div className="space-y-2">
-                                    <label className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">OpenAI API Key</label>
-                                    <input
-                                        className="w-full bg-transparent border-0 border-b border-primary/30 py-2 font-mono text-on-surface focus:outline-none focus:border-primary transition-all placeholder:text-slate-700"
-                                        placeholder="sk-..."
-                                        type="password"
-                                        value={openaiKey}
-                                        onChange={e => setOpenaiKey(e.target.value)}
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">OpenAI Model Name</label>
-                                    <input
-                                        className="w-full bg-transparent border-0 border-b border-primary/30 py-2 font-mono text-on-surface focus:outline-none focus:border-primary transition-all placeholder:text-slate-700"
-                                        placeholder="gpt-4o"
-                                        type="text"
-                                        value={agentA.openaiModel}
-                                        onChange={e => setAgentA(a => ({ ...a, openaiModel: e.target.value }))}
-                                    />
-                                </div>
-                            </div>
-                        )}
-                        <div className="space-y-4">
-                            <div className="flex justify-between items-center">
-                                <label className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">Neural Temperature</label>
-                                <span className="font-mono text-xs text-primary font-bold">{agentA.temp.toFixed(1)}</span>
-                            </div>
-                            <input
-                                className="w-full h-1.5 rounded-lg appearance-none cursor-pointer accent-primary bg-surface-container-highest"
-                                max="1" min="0" step="0.1" type="range"
-                                value={agentA.temp}
-                                onChange={e => setAgentA(a => ({ ...a, temp: parseFloat(e.target.value) }))}
-                            />
-                        </div>
-                        <div className="space-y-4 pt-4 border-t border-white/5">
-                            <label className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">Operational Role</label>
-                            <select
-                                className="w-full bg-surface-container-lowest border-b border-primary/30 py-2 font-mono text-sm text-on-surface focus:outline-none focus:border-primary transition-all cursor-pointer"
-                                value={agentA.role}
-                                onChange={e => setAgentA(a => ({ ...a, role: e.target.value }))}
-                            >
-                                {ROLES.map(r => <option key={r} value={r}>{r.replace(/_/g, ' ')}</option>)}
-                            </select>
+                {/* N-Agents Render */}
+                {agents.map((agent, index) => {
+                    const isPrimary = index % 2 === 0;
+                    const accentColor = isPrimary ? 'primary' : 'secondary';
+                    const titleColor = isPrimary ? 'text-primary' : 'text-secondary';
+                    const bgColor = isPrimary ? 'bg-primary/10' : 'bg-secondary/10';
+                    const borderColor = isPrimary ? 'border-primary/20' : 'border-secondary/20';
 
-                            {agentA.role === 'CUSTOM_ROLE' && (
-                                <div className="space-y-4 pt-2 animate-in fade-in slide-in-from-top-2">
-                                    <div className="space-y-2">
-                                        <label className="font-mono text-[9px] tracking-widest text-primary uppercase">Custom Role Title</label>
-                                        <input
-                                            type="text"
-                                            placeholder="e.g. DATABASE NINJA"
-                                            value={agentA.customRoleName}
-                                            onChange={e => setAgentA(a => ({ ...a, customRoleName: e.target.value }))}
-                                            className="w-full bg-transparent border-0 border-b border-primary/30 py-2 font-mono text-sm text-on-surface focus:outline-none focus:border-primary transition-all placeholder:text-slate-700"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="font-mono text-[9px] tracking-widest text-primary uppercase flex justify-between">
-                                            <span>System Prompt Configuration</span>
-                                        </label>
-                                        <textarea
-                                            placeholder="You are an elite expert... Your objective is to..."
-                                            value={agentA.customPrompt}
-                                            onChange={e => setAgentA(a => ({ ...a, customPrompt: e.target.value }))}
-                                            className="w-full h-32 bg-surface-container-lowest text-primary font-mono text-[10px] p-3 rounded border border-white/5 focus:border-primary/50 focus:outline-none leading-relaxed"
-                                        />
+                    return (
+                        <div key={agent.id} className="md:col-span-6 glass-panel rounded-xl p-8 relative overflow-hidden group refractive-edge h-full flex flex-col">
+                            <div className="flex items-center gap-4 mb-8">
+                                <div className={`w-10 h-10 rounded-lg ${bgColor} flex items-center justify-center border ${borderColor}`}>
+                                    <span className={`material-symbols-outlined ${titleColor}`}>smart_toy</span>
+                                </div>
+                                <div className="flex-1">
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <h3 className="font-headline text-xl font-bold uppercase">Agent {String.fromCharCode(65 + index)} <span className={`${titleColor} text-sm ml-2 tracking-tighter`}>[NPU_0{index + 1}]</span></h3>
+                                            <p className="font-mono text-[10px] text-slate-500 uppercase">Process ID: {agent.id}</p>
+                                        </div>
+                                        <div className="flex gap-2 items-center">
+                                            <ProviderToggle agent={agent} index={index} />
+                                            {agents.length > 1 && (
+                                                <button onClick={() => removeAgent(index)} className="text-error hover:text-red-400 p-1 bg-surface-container-highest rounded border border-white/5" title="Remove Agent">
+                                                    <span className="material-symbols-outlined text-[14px]">delete</span>
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Agent B Config */}
-                <div className="md:col-span-6 glass-panel rounded-xl p-8 relative overflow-hidden group refractive-edge h-full">
-                    <div className="flex items-center gap-4 mb-8">
-                        <div className="w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center border border-secondary/20">
-                            <span className="material-symbols-outlined text-secondary">memory</span>
-                        </div>
-                        <div className="flex-1">
-                            <div className="flex justify-between items-start">
-                                <div>
-                                    <h3 className="font-headline text-xl font-bold uppercase">Agent B <span className="text-secondary text-sm ml-2 tracking-tighter">[SECONDARY]</span></h3>
-                                    <p className="font-mono text-[10px] text-slate-500 uppercase">Logical Validation Unit 02</p>
-                                </div>
-                                <ProviderToggle agent={agentB} agentId="B" onSetAgent={setAgentB} />
                             </div>
-                        </div>
-                    </div>
-                    <div className="space-y-8">
-                        {agentB.provider === 'ollama' ? (
-                            <OllamaModelPicker
-                                value={agentB.model}
-                                onChange={v => setAgentB(b => ({ ...b, model: v }))}
-                                accentColor="secondary"
-                            />
-                        ) : agentB.provider === 'hf' ? (
-                            <HFModelPicker
-                                value={agentB.hfModel}
-                                onChange={v => setAgentB(b => ({ ...b, hfModel: v }))}
-                                accentColor="secondary"
-                            />
-                        ) : (
-                            <div className="space-y-4">
-                                <div className="space-y-2">
-                                    <label className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">Global OpenAI API Key</label>
+                            <div className="space-y-8 flex-1">
+                                {agent.provider === 'ollama' ? (
+                                    <OllamaModelPicker
+                                        value={agent.model}
+                                        onChange={v => handleUpdateAgent(index, a => ({ ...a, model: v }))}
+                                        accentColor={accentColor}
+                                    />
+                                ) : agent.provider === 'hf' ? (
+                                    <HFModelPicker
+                                        value={agent.hfModel}
+                                        onChange={v => handleUpdateAgent(index, a => ({ ...a, hfModel: v }))}
+                                        accentColor={accentColor}
+                                    />
+                                ) : (
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <label className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">OpenAI API Key</label>
+                                            <input
+                                                className={`w-full bg-transparent border-0 border-b border-${accentColor}/30 py-2 font-mono text-on-surface focus:outline-none focus:border-${accentColor} transition-all placeholder:text-slate-700`}
+                                                placeholder="sk-..."
+                                                type="password"
+                                                value={openaiKey}
+                                                onChange={e => setOpenaiKey(e.target.value)}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">OpenAI Model Name</label>
+                                            <input
+                                                className={`w-full bg-transparent border-0 border-b border-${accentColor}/30 py-2 font-mono text-on-surface focus:outline-none focus:border-${accentColor} transition-all placeholder:text-slate-700`}
+                                                placeholder="gpt-4o"
+                                                type="text"
+                                                value={agent.openaiModel}
+                                                onChange={e => handleUpdateAgent(index, a => ({ ...a, openaiModel: e.target.value }))}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                                <div className="space-y-4">
+                                    <div className="flex justify-between items-center">
+                                        <label className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">Neural Temperature</label>
+                                        <span className={`font-mono text-xs ${titleColor} font-bold`}>{agent.temp.toFixed(1)}</span>
+                                    </div>
                                     <input
-                                        className="w-full bg-transparent border-0 border-b border-secondary/30 py-2 font-mono text-on-surface focus:outline-none focus:border-secondary transition-all placeholder:text-slate-700"
-                                        placeholder="sk-..."
-                                        type="password"
-                                        value={openaiKey}
-                                        onChange={e => setOpenaiKey(e.target.value)}
+                                        className={`w-full h-1.5 rounded-lg appearance-none cursor-pointer accent-${accentColor} bg-surface-container-highest`}
+                                        max="1" min="0" step="0.1" type="range"
+                                        value={agent.temp}
+                                        onChange={e => handleUpdateAgent(index, a => ({ ...a, temp: parseFloat(e.target.value) }))}
                                     />
                                 </div>
-                                <div className="space-y-2">
-                                    <label className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">OpenAI Model Name</label>
-                                    <input
-                                        className="w-full bg-transparent border-0 border-b border-secondary/30 py-2 font-mono text-on-surface focus:outline-none focus:border-secondary transition-all placeholder:text-slate-700"
-                                        placeholder="gpt-4o-mini"
-                                        type="text"
-                                        value={agentB.openaiModel}
-                                        onChange={e => setAgentB(b => ({ ...b, openaiModel: e.target.value }))}
-                                    />
-                                </div>
-                            </div>
-                        )}
-                        <div className="space-y-4">
-                            <div className="flex justify-between items-center">
-                                <label className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">Neural Temperature</label>
-                                <span className="font-mono text-xs text-secondary font-bold">{agentB.temp.toFixed(1)}</span>
-                            </div>
-                            <input
-                                className="w-full h-1.5 rounded-lg appearance-none cursor-pointer accent-secondary bg-surface-container-highest"
-                                max="1" min="0" step="0.1" type="range"
-                                value={agentB.temp}
-                                onChange={e => setAgentB(b => ({ ...b, temp: parseFloat(e.target.value) }))}
-                            />
-                        </div>
-                        <div className="space-y-4 pt-4 border-t border-white/5">
-                            <label className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">Operational Role</label>
-                            <select
-                                className="w-full bg-surface-container-lowest border-b border-secondary/30 py-2 font-mono text-sm text-on-surface focus:outline-none focus:border-secondary transition-all cursor-pointer"
-                                value={agentB.role}
-                                onChange={e => setAgentB(b => ({ ...b, role: e.target.value }))}
-                            >
-                                {ROLES.map(r => <option key={r} value={r}>{r.replace(/_/g, ' ')}</option>)}
-                            </select>
+                                <div className="space-y-4 pt-4 border-t border-white/5">
+                                    <label className="font-mono text-[10px] tracking-widest text-slate-400 uppercase">Operational Role</label>
+                                    <select
+                                        className={`w-full bg-surface-container-lowest border-b border-${accentColor}/30 py-2 font-mono text-sm text-on-surface focus:outline-none focus:border-${accentColor} transition-all cursor-pointer`}
+                                        value={agent.role}
+                                        onChange={e => handleUpdateAgent(index, a => ({ ...a, role: e.target.value }))}
+                                    >
+                                        {ROLES.map(r => <option key={r} value={r}>{r.replace(/_/g, ' ')}</option>)}
+                                    </select>
 
-                            {agentB.role === 'CUSTOM_ROLE' && (
-                                <div className="space-y-4 pt-2 animate-in fade-in slide-in-from-top-2">
-                                    <div className="space-y-2">
-                                        <label className="font-mono text-[9px] tracking-widest text-secondary uppercase">Custom Role Title</label>
-                                        <input
-                                            type="text"
-                                            placeholder="e.g. LOGICAL SKEPTIC"
-                                            value={agentB.customRoleName}
-                                            onChange={e => setAgentB(b => ({ ...b, customRoleName: e.target.value }))}
-                                            className="w-full bg-transparent border-0 border-b border-secondary/30 py-2 font-mono text-sm text-on-surface focus:outline-none focus:border-secondary transition-all placeholder:text-slate-700"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="font-mono text-[9px] tracking-widest text-secondary uppercase flex justify-between">
-                                            <span>System Prompt Configuration</span>
-                                        </label>
-                                        <textarea
-                                            placeholder="You are an expert... Challenge your partner..."
-                                            value={agentB.customPrompt}
-                                            onChange={e => setAgentB(b => ({ ...b, customPrompt: e.target.value }))}
-                                            className="w-full h-32 bg-surface-container-lowest text-secondary font-mono text-[10px] p-3 rounded border border-white/5 focus:border-secondary/50 focus:outline-none leading-relaxed"
-                                        />
-                                    </div>
+                                    {agent.role === 'CUSTOM_ROLE' && (
+                                        <div className="space-y-4 pt-2 animate-in fade-in slide-in-from-top-2">
+                                            <div className="space-y-2">
+                                                <label className={`font-mono text-[9px] tracking-widest ${titleColor} uppercase`}>Custom Role Title</label>
+                                                <input
+                                                    type="text"
+                                                    placeholder="e.g. DATABASE NINJA"
+                                                    value={agent.customRoleName}
+                                                    onChange={e => handleUpdateAgent(index, a => ({ ...a, customRoleName: e.target.value }))}
+                                                    className={`w-full bg-transparent border-0 border-b border-${accentColor}/30 py-2 font-mono text-sm text-on-surface focus:outline-none focus:border-${accentColor} transition-all placeholder:text-slate-700`}
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className={`font-mono text-[9px] tracking-widest ${titleColor} uppercase flex justify-between`}>
+                                                    <span>System Prompt Configuration</span>
+                                                </label>
+                                                <textarea
+                                                    placeholder="You are an elite expert... Your objective is to..."
+                                                    value={agent.customPrompt}
+                                                    onChange={e => handleUpdateAgent(index, a => ({ ...a, customPrompt: e.target.value }))}
+                                                    className={`w-full h-32 bg-surface-container-lowest ${titleColor} font-mono text-[10px] p-3 rounded border border-white/5 focus:border-${accentColor}/50 focus:outline-none leading-relaxed`}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
-                            )}
+                            </div>
                         </div>
+                    );
+                })}
+                {agents.length < 4 && (
+                    <div className="md:col-span-12 flex justify-center mt-4">
+                        <button onClick={addAgent} className="flex items-center gap-2 px-8 py-3 rounded-xl border border-dashed border-outline-variant/30 text-outline-variant font-mono text-xs uppercase hover:bg-surface-container-highest hover:text-white transition-all">
+                            <span className="material-symbols-outlined text-[16px]">add</span>
+                            <span>Add Compute Node (Max 4)</span>
+                        </button>
                     </div>
-                </div>
+                )}
 
                 {/* Execution Environment */}
                 <div className="md:col-span-12 glass-panel rounded-xl p-8 refractive-edge">
@@ -544,6 +469,7 @@ const SettingsView = () => {
                                 key={m.id}
                                 id={`exec-mode-${m.id}`}
                                 onClick={() => setExecutionMode(m.id)}
+                                title={m.id === 'ssh' ? 'Connects to a live Linux server via SSH to execute raw commands (Destructive)' : 'Uses Sandbox constraints'}
                                 className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded text-[11px] font-mono font-bold uppercase transition-all ${executionMode === m.id ? 'bg-tertiary text-black' : 'text-outline-variant hover:text-white'
                                     }`}
                             >
@@ -665,7 +591,10 @@ const SettingsView = () => {
                 </div>
                 <div className="flex items-center gap-4">
                     <button
-                        onClick={() => { setAgentA(a => ({ ...a, model: '', provider: 'ollama' })); setAgentB(b => ({ ...b, model: '', provider: 'ollama' })); setMaxSteps(12); }}
+                        onClick={() => { 
+                            setAgents([{ id: 'agent_a', provider: 'ollama', model: '', temp: 0.7, role: 'INVESTIGATOR' }]); 
+                            setMaxSteps(12); 
+                        }}
                         className="px-8 py-3 bg-surface-container-high text-on-surface-variant font-headline font-bold text-sm tracking-widest rounded hover:bg-surface-container-highest hover:text-white transition-all uppercase"
                     >
                         Reset
