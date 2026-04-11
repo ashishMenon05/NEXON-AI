@@ -61,7 +61,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 elif action == "reset":
                     logger.info("UI Command: RESET")
                     await episode_manager.reset(task="software-incident", broadcast_episode=False)
-                    await broadcast("system_status", {"paused": False, "status": "STANDBY", "active": false})
+                    await broadcast("system_status", {"paused": False, "status": "READY", "active": False})
                 elif action == "force_end":
                     logger.info("UI Command: FORCE_END")
                     if episode_manager.env and episode_manager.env.active_episode:
