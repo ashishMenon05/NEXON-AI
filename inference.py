@@ -173,7 +173,9 @@ def run():
                 _print(f"[END] success=false steps={step_n} rewards={rewards_str}")
                 break
 
-            rewards.append(reward)
+            # Clamp reward to be strictly between 0 and 1
+            clamped_reward = max(0.001, min(0.999, reward))
+            rewards.append(clamped_reward)
 
             # Emit [STEP] — NO quotes around action or error values
             action_str = _safe_action(action_text)

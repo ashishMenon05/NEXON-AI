@@ -28,4 +28,4 @@ class EasyGrader(BaseGrader):
             if steps_ratio <= 0.6 and episode_state.fix_verified and str(rate_limit) == "1000":
                 score += criteria.get('efficiency_bonus', 0.10)
 
-        return max(0.0, min(1.0, round(score, 4)))
+        return self._clamp_score(score)
