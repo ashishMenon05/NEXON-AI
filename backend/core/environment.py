@@ -71,7 +71,7 @@ class NexusEnvironment:
         obs = NexusObservation(
             partner_message="",
             tool_results=[],
-            system_state={},
+            system_state=self.active_episode.system_state,  # Expose real state so agent sees initial conditions
             investigation_stage="investigating",
             round=1,
             available_tools=available_tools,
@@ -143,7 +143,7 @@ class NexusEnvironment:
         obs = NexusObservation(
             partner_message=action.message,
             tool_results=tool_results_objs,
-            system_state={"total_tools_run": len(ep.tool_calls_made)},
+            system_state=ep.system_state,  # Return real mutated state so agent sees the effect of its actions
             investigation_stage=ep.investigation_stage,
             round=ep.current_round,
             available_tools=SSH_TOOLS if settings.EXECUTION_MODE == "ssh" else SIMULATED_TOOLS,
@@ -156,5 +156,11 @@ class NexusEnvironment:
 
     def state(self):
         if not self.active_episode:
-            return None
+            # Return a valid default state so the /state endpoint always responds
+            return {"status": "idle", "message": "No active episode. Call /reset to start."}
         return self.active_episode.to_pydantic()
+
+    async def close(self):
+        """Clean up the active episode. Required by OpenEnv spec."""
+        self.active_episode = None
+        self.active_scenario = None

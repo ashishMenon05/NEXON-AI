@@ -150,11 +150,13 @@ async def step_env(action: NexusAction):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/state", response_model=NexusState)
+@router.get("/state")
 def get_state():
+    """Returns the current episode state. Returns idle status if no episode is active."""
     state = episode_manager.env.state()
-    if not state:
-        raise HTTPException(status_code=400, detail="No active episode")
+    # state() now always returns something — either a NexusState pydantic object or an idle dict.
+    if hasattr(state, "model_dump"):
+        return state.model_dump()
     return state
 
 @router.get("/telemetry")
