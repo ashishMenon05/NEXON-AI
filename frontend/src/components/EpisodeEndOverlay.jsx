@@ -373,44 +373,6 @@ const EpisodeEndOverlay = ({ isOpen, onClose, metrics, gameState }) => {
                         );
                     })()}
 
-                    {/* Multi-Agent Final Verdict Panel */}
-                    {(() => {
-                        const allAgents = gameState?.agents || {};
-                        const agentEntries = Object.entries(allAgents);
-                        const conclusions = agentEntries.map(([agentId, agentData]) => {
-                            const msgs = agentData?.messages || [];
-                            const textMsgs = msgs.filter(m => m.type === 'message');
-                            return { agentId, lastMsg: textMsgs[textMsgs.length - 1] };
-                        }).filter(c => c.lastMsg);
-                        
-                        if (conclusions.length === 0) return null;
-
-                        return (
-                            <div className="px-8 pb-4">
-                                <div className="p-6 bg-surface-container-low/40 border border-white/10 rounded-lg">
-                                    <h3 className="font-headline font-bold text-on-surface tracking-widest uppercase mb-4 flex items-center gap-2">
-                                        <span className="material-symbols-outlined">gavel</span>
-                                        Multi-Agent Final Verdict
-                                    </h3>
-                                    <div className="space-y-4">
-                                        {conclusions.map(({ agentId, lastMsg }, idx) => {
-                                            const agentNames = ['ALPHA', 'BRAVO', 'CHARLIE', 'DELTA', 'ECHO'];
-                                            const colorClass = idx === 0 ? 'bg-primary' : idx === 1 ? 'bg-secondary' : idx === 2 ? 'bg-tertiary' : 'bg-error';
-                                            const borderClass = idx === 0 ? 'border-primary' : idx === 1 ? 'border-secondary' : idx === 2 ? 'border-tertiary' : 'border-error';
-                                            const textClass = idx === 0 ? 'text-primary' : idx === 1 ? 'text-secondary' : idx === 2 ? 'text-tertiary' : 'text-error';
-                                            return (
-                                                <div key={agentId} className={`p-4 ${colorClass}/10 border-l-2 ${borderClass} rounded-r`}>
-                                                    <span className={`font-mono text-[10px] ${textClass} uppercase block mb-1 tracking-widest`}>Agent {agentNames[idx % agentNames.length]} ({agentId}) Conclusion</span>
-                                                    <p className="text-sm text-on-surface/90 leading-relaxed">{lastMsg.content || lastMsg.text || lastMsg.message}</p>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            </div>
-                        );
-                    })()}
-
                     {/* Unified Investigation Summary */}
                     {unifiedSummary && (
                         <div className="px-8 pb-8">
