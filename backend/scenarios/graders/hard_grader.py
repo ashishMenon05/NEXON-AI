@@ -41,12 +41,14 @@ class HardGrader(BaseGrader):
             score += criteria.get("penalty_disk_backup_agent_modified", -0.15)
 
         # 3. Episode boundaries
-        if episode_state.fix_verified and int(max_conn) >= 50:
-            score += criteria.get('fix_verified', 0.10)
+        if episode_state.fix_verified:
+            # Full sequence
+            if q_val in ["none", "null", ""] and int(max_conn) >= 50:
+                score += criteria.get('fix_verified', 0.10)
             
         if episode_state.max_rounds > 0:
-            steps_ratio = episode_state.steps_taken / episode_state.max_rounds
+            steps_ratio = episode_state.current_round / episode_state.max_rounds
             if steps_ratio <= 0.6 and episode_state.fix_verified and q_val in ["none", "null", ""]:
                 score += criteria.get('efficiency_bonus', 0.05)
 
-        return self._clamp_score(score)
+        return self._clamp(score)
